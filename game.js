@@ -1,19 +1,19 @@
 $(
 function() {
-  var MARGIN = 2;
-  var BORDER = 1; 
+  let MARGIN = 2;
+  let BORDER = 1; 
 
-  var tileWidth;
-  var tileHeight;
-  var tiles = [
+  let tileWidth;
+  let tileHeight;
+  let tiles = [
     [1, 2, 3, 4] , 
     [5, 6, 7, 8] ,
     [9, 10, 11, 12] ,
     [13, 14, 15, null]        
   ];
 
-  var gapX = 3;
-  var gapY = 3;
+  let gapX = 3;
+  let gapY = 3;
 
   function slideTile(tile, duration) {
     tile.animate ({
@@ -24,7 +24,7 @@ function() {
 
   function down() {
     if (gapY > 0) { 
-      var tile = tiles[gapY - 1][gapX];
+      let tile = tiles[gapY - 1][gapX];
       tiles[gapY][gapX] = tile;
       tile.data("y" , gapY);
       slideTile(tile);
@@ -34,7 +34,7 @@ function() {
   }
   function up() {
     if (gapY < 3) { 
-      var tile = tiles[gapY + 1][gapX];
+      let tile = tiles[gapY + 1][gapX];
       tiles[gapY][gapX] = tile;
       tile.data("y" , gapY);
       slideTile(tile);
@@ -45,7 +45,7 @@ function() {
 
   function right() {
     if (gapX > 0) {
-      var tile = tiles[gapY][gapX - 1];
+      let tile = tiles[gapY][gapX - 1];
       tiles[gapY][gapX] = tile;
       tile.data("x", gapX);
       slideTile(tile);
@@ -55,7 +55,7 @@ function() {
   }
   function left() {
     if (gapX < 3) {
-      var tile = tiles[gapY][gapX + 1];
+      let tile = tiles[gapY][gapX + 1];
       tiles[gapY][gapX] = tile;
       tile.data("x", gapX);
       slideTile(tile);
@@ -66,9 +66,9 @@ function() {
 
 
   function positionTiles() {
-    for (var x = 0; x < 4; x++) {
-      for (var y = 0; y < 4; y++) {
-        var tile = tiles[y][x];
+    for (let x = 0; x < 4; x++) {
+      for (let y = 0; y < 4; y++) {
+        let tile = tiles[y][x];
 
         if (tile) {
           tile.css ({
@@ -81,17 +81,17 @@ function() {
   }
 
   function resize() {
-      var margin = parseInt($("body").css("margin")) || 0;
-      var windowWidth = $(window).width() - 2 * margin;
-      var windowHeight = $(window).height() - 2 * margin;      
+      let margin = parseInt($("body").css("margin")) || 0;
+      let windowWidth = $(window).width() - 2 * margin;
+      let windowHeight = $(window).height() - 2 * margin;      
       
       tileWidth = Math.floor(windowWidth / 4);
       tileHeight = Math.floor(windowHeight / 4);
       
       //console.log (tileWidth, tileHeight); 
       
-      var fontSize = Math.min(tileWidth, tileHeight); 
-      var extra = 2 * (MARGIN + BORDER);
+      let fontSize = Math.min(tileWidth, tileHeight); 
+      let extra = 2 * (MARGIN + BORDER);
       
       $(".tile")
           .width(tileWidth - extra)
@@ -104,19 +104,19 @@ function() {
   }
 
   function initTiles() {
-    for (var y = 0; y < 4; y++) {
-        for (var x = 0; x < 4; x++) {
-            var value = y * 4 + x + 1;
+    for (let y = 0; y < 4; y++) {
+        for (let x = 0; x < 4; x++) {
+            let value = y * 4 + x + 1;
             
             if(value < 16) {
-                var tile = $('<div class="tile">' + value + '</div >');
+                let tile = $('<div class="tile">' + value + '</div >');
                 $('#board').append(tile); 
                 tile.data("x", x).data("y", y);
                 tiles[y][x] = tile;
                 if (x % 2) {
-                    tile.css("backgroundColor", "white");
+                    tile.css("backgroundColor", "#539fe6");
                 } else {
-                  tile.css("backgroundColor", "salmon");  
+                  tile.css("backgroundColor", "#ab4b7e");  
                 }
                 
             }
@@ -125,8 +125,8 @@ function() {
   }
 
   function scramble() {
-    for (var i = 0; i < 100; i++) {
-      var r = Math.random();
+    for (let i = 0; i < 100; i++) {
+      let r = Math.random();
 
       if (r < 0.25) {
         up();
