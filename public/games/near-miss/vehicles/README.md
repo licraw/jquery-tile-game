@@ -4,6 +4,11 @@ This folder contains the browser-loadable copies of curated Near Miss vehicle
 SVGs. The art source-of-truth is `src/games/near-miss/ui`; public files should
 only be copied or cleaned from those curated UI assets.
 
+For the complete SVG-to-canvas pipeline, registry behavior, sizing formulas,
+collision coordinate system, debug-overlay guide, and end-to-end addition
+checklist, see
+`src/games/near-miss/VEHICLE_SPRITE_PIPELINE.md`.
+
 Do not commit generated placeholder vehicles here.
 
 ## Asset Rules
@@ -92,7 +97,9 @@ Every public sprite needs a matching entry in
 - `spriteAspectRatio`: must equal the public SVG root ratio, `width / height`.
   Use `128 / 192` only for assets that actually use a `128x192` root.
 - `vehicleClass`: one of `sports-coupe`, `sedan`, or `van-truck`.
-- `uniformVisualScale`: visual-only multiplier for perceived bulk.
+- `uniformVisualScale`: multiplier for perceived bulk. It changes the rendered
+  bounds, and those same bounds currently drive collision and near-miss
+  polygons, so it is not gameplay-neutral.
 - `occupancyWidthLanes` and `occupancyLengthScale`: gameplay body size, not
   raw SVG size.
 - `collisionZones`: local zones in normalized sprite coordinates. `x` and `y`
@@ -136,8 +143,9 @@ Near Miss renders vehicles through browser `Image` objects in
 - The renderer draws SVG images centered on the gameplay body.
 - Aspect ratio is preserved. The renderer chooses one uniform scale that fits
   the SVG inside the configured render bounds.
-- `uniformVisualScale` is the per-vehicle visual-size multiplier. Use it for
-  visual bulk only; it does not change collision or near-miss math.
+- `uniformVisualScale` is the per-vehicle visual-size multiplier. Because
+  collision and near-miss polygons are transformed through the rendered sprite
+  bounds, changing it currently changes those polygons too.
 - Normal gameplay should not use procedurally drawn canvas cars as fallback art.
 
 ## Current Curated Assets
