@@ -132,6 +132,16 @@ size:
    with the visible vehicle.
 6. Tune config values only after the sprite looks correct.
 
+## Validation
+
+Run `npm run near-miss:vehicle:validate` to check the registry and its source
+and runtime SVG assets. Errors make the command fail; parity and conservative
+naming findings are warnings. The documented `traffic-sedan.svg` compatibility
+copy is intentionally reported as an unregistered warning.
+
+Run `npm run check` for the project TypeScript check, vehicle validation, and
+tests together.
+
 ## Rendering
 
 Near Miss renders vehicles through browser `Image` objects in

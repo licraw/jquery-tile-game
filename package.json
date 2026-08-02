@@ -11,6 +11,9 @@
     "start": "next start",
     "deploy:pages": "npm run build && wrangler pages deploy .next --project-name=soft-arcade",
     "dev:worker": "wrangler dev",
+    "near-miss:vehicle:validate": "node --import tsx scripts/near-miss/validate-vehicles.ts",
+    "test": "vitest run",
+    "check": "tsc --noEmit --incremental false && npm run near-miss:vehicle:validate && npm test",
     "deploy:worker": "wrangler deploy",
     "db:create": "wrangler d1 create tile-game-scores",
     "db:migrate:local": "wrangler d1 migrations apply tile-game-scores --local",
@@ -25,7 +28,9 @@
   "devDependencies": {
     "@types/node": "20.17.6",
     "@types/react": "19.2.15",
+    "tsx": "^4.23.1",
     "typescript": "5.8.2",
+    "vitest": "^4.1.10",
     "wrangler": "^4.14.1"
   }
 }
