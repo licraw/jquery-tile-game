@@ -1232,7 +1232,7 @@
 }
 
 .gameFrame {
-    font-family: 'Open Sans', sans-serif;
+    font-family: var(--font-family-sans);
 }
 
 @media (prefers-reduced-motion: reduce) {
