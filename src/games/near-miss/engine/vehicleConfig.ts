@@ -1,4 +1,6 @@
-export type NearMissVehicleClass = "sports-coupe" | "sedan" | "van-truck";
+export const NEAR_MISS_VEHICLE_CLASSES = ["sports-coupe", "sedan", "van-truck"] as const;
+
+export type NearMissVehicleClass = (typeof NEAR_MISS_VEHICLE_CLASSES)[number];
 
 export type NearMissVehicleCollisionZone = {
   id: string;

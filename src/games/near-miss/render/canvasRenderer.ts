@@ -15,6 +15,26 @@ const vehicleImages = new Map<string, HTMLImageElement>();
 if (typeof window !== "undefined") {
   for (const config of NEAR_MISS_VEHICLE_CONFIGS) {
     const image = new Image();
+    if (process.env.NODE_ENV === "development") {
+      image.onerror = () => {
+        console.error("[Near Miss] Vehicle sprite failed to load.", {
+          failureType: "load-error",
+          vehicleId: config.id,
+          vehicleLabel: config.label,
+          spritePath: config.spritePath
+        });
+      };
+      image.onload = () => {
+        if (image.naturalWidth === 0 || image.naturalHeight === 0) {
+          console.error("[Near Miss] Vehicle sprite loaded but could not be decoded.", {
+            failureType: "decode-error",
+            vehicleId: config.id,
+            vehicleLabel: config.label,
+            spritePath: config.spritePath
+          });
+        }
+      };
+    }
     image.src = config.spritePath;
     vehicleImages.set(config.id, image);
   }
