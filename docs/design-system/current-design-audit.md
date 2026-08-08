@@ -56,16 +56,20 @@ The snapshot favors representative coverage over redundant pages. Five desktop v
 
 ## Figma organization
 
-| Page | Purpose |
-| --- | --- |
-| `00 — Cover` | Baseline status and purpose |
-| `01 — Current Product` | Editable code-to-canvas captures of five desktop views plus `Home / Narrow / Current (500px)` |
-| `02 — Audit` | Typography, color, spacing/shape, components, interaction, responsive, accessibility, and state findings |
-| `03 — Foundations` | Semantic color specimens, spacing/radius scales, effects, exact type specification, and motion notes |
-| `04 — Components` | Nine verified native component families and resolved migration provenance |
-| `05 — Patterns` | Current shell plus normalized discovery/control compositions built from instances |
-| `06 — System Reference` | Structural reconstruction, comparison, and recaptured Figtree production validation |
-| `07 — Opportunities` | Deferred consistency, hierarchy, component, accessibility, responsive, and interaction work |
+Each page holds exactly one root frame and answers exactly one question.
+
+| Page | Question it answers | Contents |
+| --- | --- | --- |
+| `00 — Cover` | — | Baseline status, provenance key, contents |
+| `01 — Current Product` | What does the product actually look like? | Four desktop captures (Home, Labs, both games) and two narrow 500px captures, grouped by product context with viewport/state captions |
+| `02 — Audit` | What did we learn from it? | Eight themes, each splitting `OBSERVED IN CURRENT PRODUCT` from `SYSTEM IMPLICATION`, with consistency chips |
+| `03 — Foundations` | What reusable visual rules describe it? | Typography ramp, semantic colour, spacing, radius/border, elevation, motion, accessibility primitives, responsive rules |
+| `04 — Components` | What reusable objects implement those rules? | Nine components grouped Controls / Data & content / Containers, each with purpose, API and implementation mapping, plus a Boundaries card |
+| `05 — Patterns` | How do those objects compose? | Four patterns — application header, discovery grid, game page shell, game controls & result — each with its Desktop → Narrow transformation |
+| `06 — System Reference` | Can the system reproduce the product? | Recaptured Figtree production validation, normalized reconstruction, one 390px narrow reconstruction, remaining differences |
+| `07 — Opportunities` | What is intentionally unresolved? | Five open areas, each paired with the condition that would justify revisiting it |
+
+Responsive behaviour is documented once, in `05 — Patterns`. `03 — Foundations` carries only the rules that genuinely change by viewport (gutter, breakpoints, touch target); `04 — Components` carries none, because no shared component's anatomy changes.
 
 ## Foundations discovered
 
@@ -145,6 +149,15 @@ Nine foundational component families were created natively and verified with des
 
 No Code Connect relationship is claimed; none existed in the repository.
 
+### Property semantics worth knowing before implementing
+
+Figma text and boolean component properties are defined once per component set, so their default value is shared by every variant. Two components depend on this, and reading their specimens without knowing it is misleading:
+
+- **`Dialog`** — `Title` and `Body` are text properties with a single set-level default, so the three `Context` variants cannot carry different copy in the library. `Context` therefore varies the part that *is* per-variant: the action set (`Result` → Save Score / Play Again, `Leaderboard` → Play Again / Close, `Confirm` → Cancel / Restart with a Danger primary). The specimens intentionally read `Dialog title` / `Supporting copy, supplied by the caller.` In code, copy is a prop; the context selects the action set and the destructive treatment.
+- **`Game Card`** — `Title`, `Description` and `CTA` behave the same way. The `Game` variant carries **art only**, not copy. A third game adds an art variant, not a new component. Specimens read `Game title` / `One line describing the game.` for the same reason.
+
+Consequence for anyone editing the library: setting `characters` on a variant's text node rewrites the shared default across every variant in that set. Compositions on `05` and `06` supply real product copy through per-instance overrides, which is the intended usage.
+
 ## Recurrent patterns
 
 - Header plus centered content container
@@ -209,6 +222,8 @@ This is an obvious-concerns review, not a full WCAG audit.
 
 ## Baseline QA
 
+In Figma these measurements live on `03 — Foundations` under **Accessibility primitives**, not on the Audit page. They are foundation reference values a builder looks up, not audit narrative — the Audit page's Accessibility theme points to them.
+
 ### Contrast
 
 Representative combinations were measured with WCAG relative luminance. Normal text uses the 4.5:1 AA threshold; large text uses 3:1; non-text focus indicators use 3:1 against adjacent colors.
@@ -254,7 +269,7 @@ The baseline is frozen as **SoftArcade Design System v1 — Baseline**. This mea
 
 - Production/source behavior was audited around **390px**, at the capture environment's compact **500px** minimum, and at the meaningful intermediate **720px** breakpoint.
 - Representative routes: `/` for global header, hero, discovery cards, actions, and footer; `/games/beat-the-scrambler` for the game shell, start dialog, board controls, leaderboard, ad, and instructions; `/games/near-miss` for the canvas stage, HUD, modal, leaderboard, and touch-control strategy.
-- CURRENT Figma evidence: `Home / Mobile / Current (500px viewport)`, `Beat the Scrambler / Mobile / Ready (500px viewport)`, and `Near Miss / Narrow / Ready (720px viewport)`. The capture labels report measured viewport widths rather than implying a 390px capture that the isolated browser could not produce.
+- CURRENT Figma evidence retained: `Home / Mobile / Current (500px viewport)` and `Beat the Scrambler / Mobile / Ready (500px viewport)`. The capture labels report measured viewport widths rather than implying a 390px capture that the isolated browser could not produce. The `Near Miss / Narrow / Ready (720px)` capture was removed during the editorial pass — it duplicated the stage/rail stacking already evidenced by the Beat the Scrambler narrow capture, and its 720px breakpoint claim is a source-verified rule rather than something the capture itself demonstrated.
 
 ### Responsive classification
 
@@ -274,17 +289,19 @@ No representative page-level horizontal overflow was observed. Shared content us
 - **Layout-only reflows:** application Header, discovery list/grid, game page shell and rail, instructions, footer, hero actions, and full-width button placement. Their underlying controls remain the same.
 - **Intentionally local:** both games' active-play HUDs, canvas/board stages, mobile control overlays, and touch/overscroll behavior.
 
-### Figma mobile documentation
+### Where responsive documentation lives
 
-| Page | Mobile addition |
+An earlier pass created a parallel set of `Mobile / …` sections on every page. Those were consolidated: documenting responsive behaviour beside the thing it modifies beats documenting it twice.
+
+| Concern | Home |
 | --- | --- |
-| `01 — Current Product` | Compact `Mobile / Current` evidence group with three representative production captures |
-| `02 — Audit` | `Mobile / Responsive Audit` with SAME, REFLOW, VARIANT, GAME-SPECIFIC, and ISSUE findings |
-| `03 — Foundations` | Only responsive gutters, breakpoints, `clamp()` typography, and 44px shared-target guidance |
-| `04 — Components` | `Mobile / Component Variants` decision summary; invariant components were not duplicated |
-| `05 — Patterns` | Scannable Desktop → Mobile comparisons for Header, Discovery Cards, and Game Page Shell |
-| `06 — System Reference` | Two 390px normalized narrow references built with variables, semantic text styles, Auto Layout, and existing component instances |
-| `07 — Opportunities` | One restrained mobile opportunity note for unresolved production issues |
+| Narrow production evidence | `01 — Current Product`, in the `Narrow — 500px` group |
+| Rules that change by viewport | `03 — Foundations` → Responsive rules: 16px gutter, 900px layout breakpoint, 640px chrome breakpoint, 44px touch target, and an explicit list of what does *not* vary |
+| Composition transformations | `05 — Patterns` — each pattern carries its own Desktop → Narrow pair and reflow annotation |
+| Proof at 390px | `06 — System Reference` → one narrow reconstruction |
+| Unresolved narrow work | `07 — Opportunities` → Responsive refinements |
+
+`04 — Components` deliberately contains no mobile documentation. No shared component's anatomy changes with viewport — parent layouts stretch or wrap them — so mobile copies would have restated the desktop specimen. The two cases that genuinely transform (discovery card anatomy, viewport-bounded dialog) are composition changes and are documented in `05 — Patterns`.
 
 The normalized System Reference matches the shared gutter, stacked navigation, one-column discovery, full-width actions, and stacked stage/rail. Detailed game art and compact active-play HUDs remain implementation-owned gaps rather than speculative global components. No production CSS was changed during this audit.
 
@@ -297,12 +314,16 @@ The normalized System Reference matches the shared gutter, stacked navigation, o
 
 ## Future design opportunities — not implemented
 
-- Consolidate same-purpose card/panel spacing only after validating all contexts.
-- Evaluate the normalized type hierarchy in longer editorial content and narrow game layouts.
-- Define shared action, focus, input, and status behavior across games.
-- Establish a consistent narrow game-shell strategy while preserving game mechanics.
-- Extend the now-documented contrast and target-size criteria to deterministic game-state testing.
-- Decide which game-specific visual language belongs in shared semantic tokens versus game-local tokens.
-- Add deterministic state stories/capture routes so interaction states can be compared without modifying production behavior.
+Consolidated during the editorial pass from seven entries to five. Two were dropped as resolved: near-duplicate colour/spacing values are now answered by the semantic token layer, and overlapping heading scales are answered by the nine-style type ramp. Each remaining entry is paired with the condition that would justify acting on it, so the list reads as deliberate deferral rather than backlog.
+
+| Area | Open | Revisit when |
+| --- | --- | --- |
+| Interaction consistency | Game feedback timing, HUD density and result presentation differ between the two games. | A third game or a shared results surface puts the difference in one session. Identify invariant SoftArcade traits before constraining. |
+| Accessibility | Modal focus trapping/restoration unverified; some game feedback is colour-only; a few game-owned controls sit at 30–42px. | Before any new dialog or game control ships. These need testing inside the mechanic, not a blanket resize. |
+| Shared implementation architecture | Both games implement their own buttons, inputs, dialogs, results and leaderboard states. Figma describes them; the React code does not yet share them. | Product goals define the API. Extracting shared components before the second consumer's real requirements are known would lock in the wrong contract. |
+| Responsive refinements | Shared shell transformations are stable; each game still owns unrelated 720/560/480px adaptations, mobile play bars and modal placement. | A game needs a layout change the shared shell cannot express. |
+| System extension | The baseline describes colour, type, spacing, shell, buttons, dialogs, inputs, tabs and status — not continuous controls, transport/timeline surfaces or dense parameter layouts. | A future product introduces them. The absence is a boundary, not a gap. |
+
+Also still open, carried from earlier sections: deterministic state stories/capture routes so transient interaction states can be compared without modifying production behaviour, and the decision about which game-specific visual language belongs in shared semantic tokens versus game-local tokens.
 
 These are inputs to a separate design phase. No homepage, brand, game, or product redesign was performed in this baseline.
