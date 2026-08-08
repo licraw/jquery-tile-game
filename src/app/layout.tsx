@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
+import { Figtree } from "next/font/google";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import "./globals.css";
+
+const figtree = Figtree({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-figtree"
+});
 
 export const metadata: Metadata = {
   title: {
@@ -17,7 +24,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={figtree.variable}>
       <head>
         <script
           async

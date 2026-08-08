@@ -76,6 +76,12 @@
     user-select: none;
 }
 
+.gameFrame :global(button:focus-visible),
+.gameFrame :global(input:focus-visible) {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
 .gameFrame :global(#board) {
     position: relative;
     width: 100%;
@@ -924,6 +930,7 @@
 
 .gameFrame :global(.leaderboard-level-button) {
     min-width: 92px;
+    min-height: 44px;
     border: 1px solid var(--border);
     border-radius: 999px;
     padding: 10px 14px;
@@ -974,7 +981,7 @@
 
 .gameFrame :global(.level-button[data-level="hard"]) {
     background: var(--red);
-    color: #fff5f5;
+    color: var(--on-danger);
 }
 
 .gameFrame :global(#leaderboard-table-wrap) {
@@ -1232,7 +1239,7 @@
 }
 
 .gameFrame {
-    font-family: 'Open Sans', sans-serif;
+    font-family: var(--font-family-sans);
 }
 
 @media (prefers-reduced-motion: reduce) {
