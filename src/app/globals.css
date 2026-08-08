@@ -34,6 +34,8 @@
   --accent-cyan: #00e5ff;
   --accent-green: #3cff8f;
   --accent-red: #ff3b3b;
+  --focus-ring: #7dd3fc;
+  --on-danger: #061016;
   --max-width: 1180px;
 }
 
@@ -96,6 +98,13 @@ a {
   gap: 18px;
   color: var(--muted);
   font-size: 0.95rem;
+}
+
+.site-nav a,
+.site-footer nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 
 .site-nav a:hover,
@@ -366,7 +375,19 @@ a {
 .primary-link:focus-visible,
 .secondary-link:focus-visible,
 .featured-game-card:focus-visible {
-  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.28);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.site-nav a:focus-visible,
+.site-footer nav a:focus-visible,
+.primary-link:focus-visible,
+.secondary-link:focus-visible,
+.featured-game-card:focus-visible,
+.lab-card:focus-visible,
+.game-card:focus-visible,
+.house-ad:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
 }
 
 .content-section,

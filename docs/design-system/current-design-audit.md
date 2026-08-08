@@ -1,6 +1,6 @@
 # SoftArcade Current Design Audit
 
-**Status:** Baseline / Pre-Redesign  
+**Status:** SoftArcade Design System v1 — Baseline
 **Audit date:** 2026-08-06  
 **Figma:** [Soft Arcade — Design System & Current Product Snapshot](https://www.figma.com/design/PtTVVeJV510W5GMowTEbMu/Soft-Arcade?node-id=0-1)
 
@@ -43,7 +43,7 @@ Shared application patterns include:
 
 | Route or group | Meaningful view | Audit status |
 | --- | --- | --- |
-| `/` | Home, hero, navigation, discovery cards | Captured |
+| `/` | Home, hero, navigation, discovery cards | Captured — desktop and 500px narrow CURRENT views |
 | `/games` | Game library and card collection | Captured |
 | `/games/beat-the-scrambler` | Game shell, configuration/ready UI, leaderboard, instructions | Captured (ready) |
 | `/games/near-miss` | Game shell, canvas stage, HUD/ready UI, leaderboard, instructions | Captured (ready) |
@@ -52,14 +52,14 @@ Shared application patterns include:
 | `/about`, `/privacy`, `/terms`, `/contact` | Near-identical text-page template | Grouped and source audited |
 | unknown route | 404 state | Source audited |
 
-The snapshot favors representative coverage over redundant pages. Five desktop views were captured. Mobile/narrow and transient game states were inspected in source but not placed in the as-shot page because faithful viewport/state automation was unavailable; they were not fabricated.
+The snapshot favors representative coverage over redundant pages. Five desktop views and one production narrow view were captured. The narrow Home capture is 500 CSS px—the isolated Chrome capture environment's minimum—and verifies the shared rules below the 640px breakpoint. Transient game states were inspected in source but not fabricated.
 
 ## Figma organization
 
 | Page | Purpose |
 | --- | --- |
 | `00 — Cover` | Baseline status and purpose |
-| `01 — Current Product` | Editable code-to-canvas captures of the five representative views |
+| `01 — Current Product` | Editable code-to-canvas captures of five desktop views plus `Home / Narrow / Current (500px)` |
 | `02 — Audit` | Typography, color, spacing/shape, components, interaction, responsive, accessibility, and state findings |
 | `03 — Foundations` | Semantic color specimens, spacing/radius scales, effects, exact type specification, and motion notes |
 | `04 — Components` | Nine verified native component families and resolved migration provenance |
@@ -73,10 +73,10 @@ The snapshot favors representative coverage over redundant pages. Five desktop v
 
 The product is a dark arcade interface built from near-black canvas/surface layers, warm off-white primary text, muted gray secondary text, cyan action/focus accents, magenta decorative accents, and compact success/warning/danger colors. Game surfaces introduce a distinct blue-black background.
 
-The Figma file contains 82 scoped variables across four single-mode collections:
+The Figma file contains 83 scoped variables across four single-mode collections:
 
 - **Primitives (24):** neutral, cream, cyan, magenta, yellow, green, red, ink, black, and observed translucent values.
-- **Semantic (17):** canvas/surface/elevated/game backgrounds; primary/secondary/game-muted text; default/strong borders; primary action and on-action; success/warning/danger; cyan/magenta accents; focus ring.
+- **Semantic (18):** canvas/surface/elevated/game backgrounds; primary/secondary/game-muted text; default/strong borders; primary action, on-action, and on-danger; success/warning/danger; cyan/magenta accents; focus ring.
 - **Dimensions (17):** spacing `4, 8, 12, 16, 18, 20, 24, 28, 32, 48`; radii `5, 6, 8, 10, full`; borders `1, 3`.
 - **Typography (24):** Figtree family; Regular, Bold, ExtraBold, and Black styles; seven sizes; nine line heights; and normalized zero, label, and data tracking.
 
@@ -207,6 +207,87 @@ The updated homepage was recaptured with `generate_figma_design` into `06 — Sy
 
 This is an obvious-concerns review, not a full WCAG audit.
 
+## Baseline QA
+
+### Contrast
+
+Representative combinations were measured with WCAG relative luminance. Normal text uses the 4.5:1 AA threshold; large text uses 3:1; non-text focus indicators use 3:1 against adjacent colors.
+
+| Combination | Ratio | Threshold | Result | Provenance |
+| --- | ---: | ---: | --- | --- |
+| Primary text `#f4f2ee` / canvas `#101115` | 16.87:1 | 4.5:1 | PASS | CURRENT |
+| Secondary text `#b8b3aa` / canvas `#101115` | 9.04:1 | 4.5:1 | PASS | CURRENT |
+| Secondary text `#b8b3aa` / surface `#181a20` | 8.34:1 | 4.5:1 | PASS | CURRENT |
+| Game-muted `#9a9aa3` / game `#08090f` | 7.12:1 | 4.5:1 | PASS | CURRENT |
+| On-primary `#061016` / action `#7dd3fc` | 11.52:1 | 4.5:1 | PASS | CURRENT |
+| Previous light danger label `#fff5f5` / danger `#ff3b3b` | 3.16:1 | 4.5:1 | FAIL | CURRENT preserved in audit |
+| On-danger `#061016` / danger `#ff3b3b` | 5.43:1 | 4.5:1 | PASS | NORMALIZED |
+| Previous translucent focus ring / canvas | 1.94:1 | 3:1 | FAIL | CURRENT preserved in audit |
+| Solid focus ring `#7dd3fc` / canvas | 11.32:1 | 3:1 | PASS | NORMALIZED |
+
+Disabled states are REVIEW: they are intentionally dimmed and WCAG contrast requirements exempt inactive controls, but state differentiation remains important. Success, warning, cyan, and magenta status treatments pass against the game surface at 15.05:1, 12.98:1, 12.92:1, and 6.21:1 respectively.
+
+### Touch targets
+
+- **PASS:** native Button, Icon Button, Input, shared navigation/actions, Beat the Scrambler icon controls, and modal actions provide 44px or larger targets.
+- **NORMALIZED:** Difficulty Tabs increased from 40px to 44px; shared site navigation and footer links now provide a 44px hit area without visually enlarging their text.
+- **CONTEXTUAL:** several game-owned compact controls remain 30–42px. They were not enlarged indiscriminately because board density and mechanics require contextual testing.
+
+### Keyboard focus
+
+- **NORMALIZED:** `--focus-ring` now defines one solid cyan treatment; shared links, cards, buttons, inputs, tabs, and representative game controls use a 3px outline with offset.
+- Focus is visible, distinct from hover, and sits outside the control to reduce clipping risk.
+- **REVIEW:** modal focus trapping/restoration and exhaustive game-board keyboard equivalence remain outside this foundation pass.
+
+### Responsive evidence and fixes
+
+- **CURRENT:** `01 — Current Product / Home / Narrow / Current (500px)` verifies the stacked shared header/navigation below 640px and single-column discovery content below 900px. Historical desktop captures are unchanged.
+- **NORMALIZED:** Figma and production now share the solid focus token, dark on-danger label token, 44px Difficulty Tabs, and 44px shared navigation targets.
+- Production files changed for QA: `src/app/globals.css`, `src/games/beat-the-scrambler/styles.module.css`, and `src/games/near-miss/styles.module.css`.
+- Validation: Figma read-back and screenshots confirmed variable bindings, component dimensions, audit layout, cover status, and narrow capture; `npm run build` completed successfully.
+
+The baseline is frozen as **SoftArcade Design System v1 — Baseline**. This means the current product is captured and systemized with obvious low-risk accessibility foundation issues addressed; it does not imply permanent completeness.
+
+## Mobile / Responsive audit
+
+### Viewports and routes reviewed
+
+- Production/source behavior was audited around **390px**, at the capture environment's compact **500px** minimum, and at the meaningful intermediate **720px** breakpoint.
+- Representative routes: `/` for global header, hero, discovery cards, actions, and footer; `/games/beat-the-scrambler` for the game shell, start dialog, board controls, leaderboard, ad, and instructions; `/games/near-miss` for the canvas stage, HUD, modal, leaderboard, and touch-control strategy.
+- CURRENT Figma evidence: `Home / Mobile / Current (500px viewport)`, `Beat the Scrambler / Mobile / Ready (500px viewport)`, and `Near Miss / Narrow / Ready (720px viewport)`. The capture labels report measured viewport widths rather than implying a 390px capture that the isolated browser could not produce.
+
+### Responsive classification
+
+| Classification | Observed behavior |
+| --- | --- |
+| `SAME` | Button, Icon Button, Input, Difficulty Tabs, Score/Status, colors, radii, borders, elevation, and semantic typography roles retain their anatomy. |
+| `REFLOW` | Header/navigation stack and wrap below 640px; Home hero and discovery content become one column below 900px; game stage and rail stack below 900px; footer and instructions reflow vertically; compact discovery actions become full width. |
+| `VARIANT` | Discovery cards change from horizontal art/copy/action to a vertical reading order; dialogs become viewport-bounded with vertical flow and internal scrolling. |
+| `GAME-SPECIFIC` | Beat the Scrambler condenses HUD/actions and changes touch-action behavior below 720px. Near Miss independently adapts HUD, controls, stage height, and modal spacing at 720/560/480px. |
+| `ISSUE` | Some game-owned controls remain 30–42px; dense HUD labels can wrap; modal focus trapping/restoration remains unverified. |
+
+No representative page-level horizontal overflow was observed. Shared content uses a 16px gutter through `width: min(..., calc(100% - 32px))`; labs narrow to a 12px gutter below 640px. Typography uses existing `clamp()` behavior rather than a separate mobile type scale.
+
+### True variants versus layout-only reflows
+
+- **True responsive component/pattern variants:** discovery Game Card anatomy and viewport-bounded Dialog composition.
+- **Layout-only reflows:** application Header, discovery list/grid, game page shell and rail, instructions, footer, hero actions, and full-width button placement. Their underlying controls remain the same.
+- **Intentionally local:** both games' active-play HUDs, canvas/board stages, mobile control overlays, and touch/overscroll behavior.
+
+### Figma mobile documentation
+
+| Page | Mobile addition |
+| --- | --- |
+| `01 — Current Product` | Compact `Mobile / Current` evidence group with three representative production captures |
+| `02 — Audit` | `Mobile / Responsive Audit` with SAME, REFLOW, VARIANT, GAME-SPECIFIC, and ISSUE findings |
+| `03 — Foundations` | Only responsive gutters, breakpoints, `clamp()` typography, and 44px shared-target guidance |
+| `04 — Components` | `Mobile / Component Variants` decision summary; invariant components were not duplicated |
+| `05 — Patterns` | Scannable Desktop → Mobile comparisons for Header, Discovery Cards, and Game Page Shell |
+| `06 — System Reference` | Two 390px normalized narrow references built with variables, semantic text styles, Auto Layout, and existing component instances |
+| `07 — Opportunities` | One restrained mobile opportunity note for unresolved production issues |
+
+The normalized System Reference matches the shared gutter, stacked navigation, one-column discovery, full-width actions, and stacked stage/rail. Detailed game art and compact active-play HUDs remain implementation-owned gaps rather than speculative global components. No production CSS was changed during this audit.
+
 ## Unresolved questions
 
 - Which transient states should be captured through a dedicated deterministic test/state harness: loading, failure, playing, complete, and modal open?
@@ -220,7 +301,7 @@ This is an obvious-concerns review, not a full WCAG audit.
 - Evaluate the normalized type hierarchy in longer editorial content and narrow game layouts.
 - Define shared action, focus, input, and status behavior across games.
 - Establish a consistent narrow game-shell strategy while preserving game mechanics.
-- Formalize contrast and target-size acceptance criteria.
+- Extend the now-documented contrast and target-size criteria to deterministic game-state testing.
 - Decide which game-specific visual language belongs in shared semantic tokens versus game-local tokens.
 - Add deterministic state stories/capture routes so interaction states can be compared without modifying production behavior.
 

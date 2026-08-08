@@ -23,6 +23,12 @@
   user-select: none;
 }
 
+.gameShell :global(button:focus-visible),
+.gameShell :global(input:focus-visible) {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .gameFrame {
   position: relative;
   width: 100%;
