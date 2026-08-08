@@ -14,18 +14,21 @@
     "deploy:worker": "wrangler deploy",
     "db:create": "wrangler d1 create tile-game-scores",
     "db:migrate:local": "wrangler d1 migrations apply tile-game-scores --local",
-    "db:migrate:remote": "wrangler d1 migrations apply tile-game-scores --remote"
+    "db:migrate:remote": "wrangler d1 migrations apply tile-game-scores --remote",
+    "test": "vitest run"
   },
   "dependencies": {
     "next": "^16.2.5",
     "posthog-js": "^1.378.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "tone": "15.1.22"
   },
   "devDependencies": {
     "@types/node": "20.17.6",
     "@types/react": "19.2.15",
     "typescript": "5.8.2",
+    "vitest": "^4.1.10",
     "wrangler": "^4.14.1"
   }
 }
