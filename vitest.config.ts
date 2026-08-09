@@ -8,7 +8,9 @@ export default defineConfig({
     }
   },
   test: {
+    // Pure logic stays in node; component tests opt into jsdom with a
+    // `@vitest-environment jsdom` docblock so the fast suite stays fast.
     environment: "node",
-    include: ["src/**/*.test.ts"]
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"]
   }
 });

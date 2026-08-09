@@ -972,6 +972,346 @@
   cursor: pointer;
 }
 
+/* ---------- Parameter Group (Figma 27:104) ---------- */
+
+.parameterGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.paramGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  /* Figma draws this card in --panel because it sits on the page background.
+     Inside the editor, which is already --panel, the border alone carries the
+     grouping and the --panel-2 controls inside stay distinct. */
+  background: transparent;
+}
+
+.paramGroupHighlighted {
+  padding: 15px;
+  border: 2px solid var(--accent-cyan);
+  background: var(--panel-2);
+}
+
+.paramGroupAgent {
+  padding: 15px;
+  border: 2px solid var(--accent-magenta);
+  background: var(--panel-2);
+}
+
+.paramGroupHeading {
+  width: 100%;
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
+.paramGroupToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.paramGroupHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.paramGroupTitle {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: var(--font-weight-bold);
+  line-height: 20px;
+}
+
+.paramGroupChip {
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.5px;
+  line-height: 12px;
+  white-space: nowrap;
+}
+
+.paramGroupChevron {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: var(--font-weight-bold);
+  line-height: 18px;
+}
+
+.paramGroupTechnical {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.7px;
+  line-height: 13px;
+  opacity: 0.8;
+  white-space: pre-wrap;
+}
+
+.paramGroupContent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* `hidden` has to beat the flex display above, or a collapsed group still
+   renders its controls. */
+.paramGroupContent[hidden] {
+  display: none;
+}
+
+.paramGroupSummary {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: var(--font-weight-regular);
+  line-height: 16px;
+  opacity: 0.75;
+}
+
+.groupControl {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* ---------- ADSR Envelope (Figma 39:84) ---------- */
+
+.envelope {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  /* The plot does not reflow: the design places it at its natural 440 rather
+     than filling the column (Figma 11 — Handoff, illustrative item 1). */
+  width: 440px;
+  max-width: 100%;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.envelopeHighlighted {
+  padding: 19px;
+  border: 2px solid var(--accent-cyan);
+  background: var(--panel-2);
+}
+
+.envelopeAgent {
+  padding: 19px;
+  border: 2px solid var(--accent-magenta);
+  background: var(--panel-2);
+}
+
+.envelopeHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.envelopeLabels {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.envelopeTitle {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: var(--font-weight-bold);
+  line-height: 20px;
+}
+
+.envelopeTechnical {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.8px;
+  line-height: 13px;
+  white-space: pre-wrap;
+}
+
+.envelopeHint {
+  color: var(--sl-game-muted);
+  font-size: 10px;
+  font-weight: var(--font-weight-regular);
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.envelopePlot {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  border-radius: 8px;
+  background: var(--sl-game-bg);
+  touch-action: none;
+}
+
+/* The curve's own box, inset from the plot so the release handle sits on a
+   baseline above the A/D/S/R captions instead of on the plot's bottom edge. */
+.envelopeCanvas {
+  position: absolute;
+  inset: 12px 12px 28px;
+}
+
+.envelopeSvg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.envelopeGrid {
+  stroke: var(--line);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.envelopeLine {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.envelopeArea {
+  fill: var(--accent);
+  /* Node-level transparency, matching the component's implementation note. */
+  opacity: 0.16;
+  stroke: none;
+}
+
+.envelopeGhost {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.envelopeHandle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  touch-action: none;
+}
+
+/* Expanded hit area: the dot stays 12px so the shape reads, but the target is
+   44px for touch (plan §17 / brief §19). */
+.envelopeHandle::before {
+  position: absolute;
+  content: "";
+  inset: -16px;
+  border-radius: 999px;
+}
+
+.envelopeHandleActive {
+  cursor: grabbing;
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.45),
+    0 0 0 4px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* Captions share the canvas inset so an A/D/S/R letter lines up with the
+   stage it names. */
+.envelopeStages {
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+  left: 12px;
+  height: 10px;
+}
+
+.envelopeStage {
+  position: absolute;
+  color: var(--sl-game-muted);
+  font-size: 8px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.9px;
+  line-height: 10px;
+  transform: translateX(-50%);
+}
+
+.envelopeReadouts {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.envelopeReadout {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  /* Vertical breathing room only: horizontal padding with negative margins
+     pushed the row wider than its column at narrow widths. */
+  padding: 4px 0;
+  margin: -4px 0;
+  border-radius: 6px;
+}
+
+.envelopeReadout:hover {
+  background: var(--panel-2);
+}
+
+.envelopeReadoutLabel {
+  color: var(--sl-game-muted);
+  font-size: 8px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.9px;
+  line-height: 11px;
+}
+
+.envelopeReadoutValue {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: var(--font-weight-bold);
+  line-height: 18px;
+  white-space: nowrap;
+}
+
 /* ---------- Start gate ---------- */
 
 .gateOverlay {
@@ -1695,6 +2035,38 @@
 
   .parameters {
     flex-direction: column;
+  }
+
+  .paramGroup {
+    padding: 12px;
+  }
+
+  .paramGroupHighlighted,
+  .paramGroupAgent {
+    padding: 11px;
+  }
+
+  .envelope {
+    padding: 14px;
+  }
+
+  .envelopeHighlighted,
+  .envelopeAgent {
+    padding: 13px;
+  }
+
+  /* The graph keeps its full height at every width: shrinking it is what
+     makes the handles impractical to hit on touch. The readouts wrap into a
+     2×2 block instead, so their labels stay legible. */
+  .envelopeReadouts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 8px;
+  }
+
+  .envelopeHint {
+    white-space: normal;
+    text-align: right;
   }
 
   .editor {

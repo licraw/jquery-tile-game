@@ -465,3 +465,149 @@ user-activation failure.
 An attempted startup-lifecycle change made during investigation was fully
 reverted because it did not address the confirmed cause. Synth Lab retains the
 original single engine/context/transport architecture and dynamic engine load.
+
+## 11. Parameter groups and the ADSR Envelope component (2026-08-09)
+
+A UI-fidelity pass bringing the audio controls back onto the approved Synth Lab
+component system. No change to the audio engine, sequencing, lesson model,
+WebMCP schemas, persistence format or musical behaviour.
+
+### 11.1 What Figma actually specifies
+
+The file is not internally consistent here, so the resolution is recorded
+rather than hidden:
+
+- `06 — Components` defines **Parameter Group** (27:104) with two disclosure
+  levels — the group collapses to a header plus a summary of its contents, and
+  an expanded group can still hold a `+ More` tier — and **ADSR Envelope**
+  (39:84) in three states, whose description calls four scalar sliders "the
+  thing that hides what is being taught".
+- The `07 — Final / Desktop` frames mostly predate both: they draw a flat
+  `Parameters` frame with four sliders and one editor-level `+ More` line. The
+  exception is `Challenge 2 — Envelopes complete` (51:558), which does place the
+  ADSR Envelope at its natural 440 and drops the four sliders, leaving
+  Brightness / Sharpness / Sweep beside it.
+- Group names come from the frames themselves: `Group / Oscillator`
+  ("OSCILLATOR · THE STARTING WAVEFORM"), `Group / Voices` (Pads), and the
+  Parameter Group component's own "Filter" instance, whose `+ More` line names
+  *filter envelope amount* — which is why Sweep sits in Filter's secondary tier
+  and there is **no separate Filter Envelope group**.
+
+Where the component library and the older frames disagreed, the component
+library and 51:558 won: that is the direction the design moved, and the
+handoff's "illustrative in Figma, must be real in code" note only makes sense
+against the component.
+
+### 11.2 Parameter groups
+
+`engine/paramGroups.ts` is the registry — Oscillator, Voices (Pads only), Amp
+Envelope, Filter, in the frames' order — and `components/ParameterGroup.tsx`
+is the shared component. It carries title, optional technical line, count chip,
+expanded/collapsed state, children, a `+ More` tier and the lesson/agent
+highlight, and nothing else; it is deliberately not a universal disclosure API.
+
+Both disclosures are real buttons with `aria-expanded`/`aria-controls`, and
+hidden content is `hidden` rather than merely unstyled, so a collapsed group is
+gone from the tab order and from the accessibility tree.
+
+Two rules the design implies:
+
+- **A collapsed group still says what it holds.** The chip becomes "4 MORE" and
+  a muted line names the controls ("Punch · Length · Body · Tail").
+- **Disclosure is never a command.** It is component state. A lesson or agent
+  pointing at a hidden parameter opens the group holding it — and its `+ More`
+  tier if that is where the parameter lives — instead of highlighting something
+  nobody can see. `locateControl()` owns that lookup, and all four ADSR
+  parameters resolve to the Amp Envelope group.
+
+`ParamDef.group` and the `ESSENTIAL_PARAM_IDS` / `MORE_PARAM_IDS` pair were
+deleted rather than left beside the registry: two sources of grouping truth is
+exactly the drift this pass was fixing.
+
+### 11.3 ADSR Envelope
+
+`components/EnvelopeEditor.tsx` replaces the four sliders as the primary
+envelope interface. Geometry lives in `engine/envelopeGeometry.ts`, pure and
+unit-tested: the polyline is derived from the four values, and dragging a
+handle is the inverse of that derivation. Time is laid out as four fixed
+horizontal budgets filled by each parameter's *normalised* position, so the
+graph and the slider mapping agree and a 4-second release cannot squash attack
+into invisibility.
+
+- Three handles, as the component names them: attack peak (horizontal),
+  decay/sustain corner (both axes — the one handle that teaches a pairing),
+  release end (horizontal).
+- The plot does not reflow. The card is 440 wide with a 140px plot at every
+  width; on mobile the readouts wrap 2×2 rather than the graph shrinking,
+  because shrinking it is what makes handles unhittable. Handles stay 12px with
+  a 44px hit area.
+- The ghost "before" curve is rebuilt from the agent transaction's inverse
+  patches — the same source the Agent Action Card auditions — so the two can
+  never disagree. `beforePatchFor` moved to `state/patchDiff.ts` and is now
+  shared.
+
+**No second ADSR model exists.** The component reads `patch.ampEnv` and writes
+through `dispatch`.
+
+### 11.4 One command was added
+
+`setEnvelope` sets any subset of the four values in one mutation with
+coalesce key `envelope:<track>`. It exists because the corner handle moves decay
+and sustain together: two `setSynthParam` dispatches per pointer-move would
+alternate coalesce keys and produce a transaction per frame. One drag is now
+one undo step — verified live, where a single Cmd+Z restored both decay and
+sustain. Keyboard adjustments still use `setSynthParam`, so per-parameter undo
+receipts ("Punch is back to 5 ms") are unchanged, and WebMCP tools were not
+touched.
+
+### 11.5 Accessibility
+
+The readout row is the keyboard surface, which is the component's own stated
+resolution of the brief §18 conflict. Each readout is a `role="slider"` with
+`aria-valuenow` / `min` / `max` / `valuetext`, arrow / Shift+arrow / Home / End
+stepping identical to `ParameterSlider`, and both labels visible. The graph and
+its handles are `aria-hidden` — a mirror, never the only way in.
+
+**One deliberate deviation from the drawn component.** Figma's readout row shows
+only the technical stage ("ATTACK"). The lesson copy tells users to move
+"Punch", "Length" and "Body", so dropping the perceptual names would break the
+teaching and decision D3. The readouts read "PUNCH · ATTACK" — perceptual
+leading, technical following, one line, no extra row.
+
+### 11.6 Responsive
+
+Verified live at 1440 and 834, and at a 358px content width (Chrome will not
+size a window below 500px, and the ≤640 rules are already active there): no
+horizontal overflow, nothing clipped, readouts 2×2, plot 270×140 with 12px
+handles. One bug was found and fixed in the process — the readouts' horizontal
+padding with negative margins pushed the row 12px wider than its column at
+narrow widths.
+
+Plan §16 said the mobile ADSR would be "readout row only". That was written
+before the graph existed; hiding it would fail the requirement that the
+envelope stay usable on touch, so the graph is kept at every width.
+
+### 11.7 Tests
+
+`npm test` — 128 passing across 12 files (was 86 across 7). Vitest gained
+`jsdom` + Testing Library (anticipated by plan §18) for component tests, which
+opt in per file via a `@vitest-environment jsdom` docblock so the pure-logic
+suite stays in node.
+
+New coverage: envelope geometry and drag round-trips including clamping; group
+membership and `locateControl`; group disclosure, keyboard disclosure and the
+collapsed summary; A/D/S/R keyboard manipulation reaching project state;
+accessibility labels, values, units and ranges; undo of an envelope change and
+of a two-parameter drag as one transaction; an agent multi-parameter patch
+(shape, ghost, readouts, single undo); "make it pluck" validating from envelope
+edits; ADSR persistence round trip; and that Drums still shows no parameter
+groups.
+
+`npx tsc --noEmit` and `npm run build` clean.
+
+### 11.8 Not verified
+
+Audible output (the harness has no audio capture) and iOS Safari touch dragging
+on real hardware. Figma was not written back to — this pass moved code toward
+the design, not the reverse; the stale flat-slider frames on `07` and `08` are
+reported, not edited.
