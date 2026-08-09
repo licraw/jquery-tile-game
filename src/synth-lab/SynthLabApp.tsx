@@ -13,10 +13,12 @@ import { attachLessonEngine, enterFreePlay, startChallenge } from "@/synth-lab/l
 import { dispatch } from "@/synth-lab/state/commands";
 import { useSynthLabState } from "@/synth-lab/state/projectStore";
 import { performRedo, performUndo } from "@/synth-lab/state/undoActions";
-import * as engineModule from "@/synth-lab/engine/SynthLabEngine";
 import styles from "@/synth-lab/styles.module.css";
 
+type EngineModule = typeof import("@/synth-lab/engine/SynthLabEngine");
+
 // Module-level so React Strict Mode double-mounts share one engine lifecycle.
+let engineModule: EngineModule | null = null;
 let audioStartedGlobal = false;
 let pendingDispose: ReturnType<typeof setTimeout> | null = null;
 
@@ -33,7 +35,7 @@ function scheduleDispose(): void {
   // unmount lets it fire (plan §11 generation guard).
   pendingDispose = setTimeout(() => {
     pendingDispose = null;
-    engineModule.disposeEngine();
+    engineModule?.disposeEngine();
     audioStartedGlobal = false;
   }, 0);
 }
@@ -67,14 +69,12 @@ export function SynthLabApp() {
   }, []);
 
   const startAudio = useCallback(async (mode: "challenge" | "free"): Promise<boolean> => {
-    // This must be the first operation in the tap/click handler. startEngine
-    // calls Tone.start() synchronously, before its returned promise is awaited,
-    // preserving iOS Safari's trusted user activation.
-    const engineStart = engineModule.startEngine();
     setStarting(true);
     setStartError(null);
     try {
-      const engine = await engineStart;
+      // Dynamic import keeps Tone (~150 KB) out of the route's initial JS.
+      engineModule = engineModule ?? (await import("@/synth-lab/engine/SynthLabEngine"));
+      const engine = await engineModule.startEngine();
       audioStartedGlobal = true;
       setAudioStarted(true);
       // WebMCP registration stays behind the command layer; no-ops when the
@@ -96,13 +96,8 @@ export function SynthLabApp() {
       }
       dispatch({ type: "play" });
       return true;
-    } catch (error) {
-      audioStartedGlobal = false;
-      setAudioStarted(false);
-      setStartError("Audio couldn't start. Tap to try again.");
-      if (process.env.NODE_ENV !== "production") {
-        console.error("[Synth Lab audio] Context start failed", error, engineModule.getAudioDiagnostics());
-      }
+    } catch {
+      setStartError("Audio could not start. Check the tab's sound permissions and try again.");
       return false;
     } finally {
       setStarting(false);
@@ -112,10 +107,12 @@ export function SynthLabApp() {
   // Transport play before the gate was dismissed is still a user gesture —
   // route it through the same start flow so audio never plays un-gated.
   const requestPlay = useCallback(() => {
-    // startAudio resumes a context suspended by iOS backgrounding and is
-    // idempotent once the singleton engine exists.
-    void startAudio(audioStartedGlobal ? (activeChallengeId ? "challenge" : "free") : "challenge");
-  }, [activeChallengeId, startAudio]);
+    if (audioStartedGlobal) {
+      dispatch({ type: "play" });
+    } else {
+      void startAudio("challenge");
+    }
+  }, [startAudio]);
 
   return (
     <main className={styles.app}>

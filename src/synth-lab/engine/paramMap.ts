@@ -33,8 +33,6 @@ export interface ParamDef {
   format: (value: number) => string;
   /** Spoken form for aria-valuetext, e.g. "4.8 kilohertz". */
   formatSpoken: (value: number) => string;
-  /** Shown in the collapsed "+ More" summary line and used for grouping. */
-  group: "essential" | "more";
 }
 
 function formatHz(value: number): string {
@@ -78,8 +76,7 @@ export const PARAM_DEFS: Record<SynthParamId, ParamDef> = {
     step: 0, // log params step in normalized space; see stepParam()
     largeStep: 0,
     format: formatHz,
-    formatSpoken: spokenHz,
-    group: "essential"
+    formatSpoken: spokenHz
   },
   resonance: {
     id: "resonance",
@@ -91,8 +88,7 @@ export const PARAM_DEFS: Record<SynthParamId, ParamDef> = {
     step: 0.01,
     largeStep: 0.1,
     format: formatPercent,
-    formatSpoken: spokenPercent,
-    group: "essential"
+    formatSpoken: spokenPercent
   },
   attack: {
     id: "attack",
@@ -104,8 +100,7 @@ export const PARAM_DEFS: Record<SynthParamId, ParamDef> = {
     step: 0,
     largeStep: 0,
     format: formatSeconds,
-    formatSpoken: spokenSeconds,
-    group: "essential"
+    formatSpoken: spokenSeconds
   },
   decay: {
     id: "decay",
@@ -117,8 +112,7 @@ export const PARAM_DEFS: Record<SynthParamId, ParamDef> = {
     step: 0,
     largeStep: 0,
     format: formatSeconds,
-    formatSpoken: spokenSeconds,
-    group: "essential"
+    formatSpoken: spokenSeconds
   },
   sustain: {
     id: "sustain",
@@ -130,8 +124,7 @@ export const PARAM_DEFS: Record<SynthParamId, ParamDef> = {
     step: 0.01,
     largeStep: 0.1,
     format: formatPercent,
-    formatSpoken: spokenPercent,
-    group: "more"
+    formatSpoken: spokenPercent
   },
   release: {
     id: "release",
@@ -143,8 +136,7 @@ export const PARAM_DEFS: Record<SynthParamId, ParamDef> = {
     step: 0,
     largeStep: 0,
     format: formatSeconds,
-    formatSpoken: spokenSeconds,
-    group: "more"
+    formatSpoken: spokenSeconds
   },
   filterEnvAmount: {
     id: "filterEnvAmount",
@@ -157,8 +149,7 @@ export const PARAM_DEFS: Record<SynthParamId, ParamDef> = {
     largeStep: 0.4,
     // Figma product frames display Sweep as a percentage of the full range.
     format: (value) => `${Math.round((value / 4) * 100)}%`,
-    formatSpoken: (value) => `${Math.round((value / 4) * 100)} percent`,
-    group: "more"
+    formatSpoken: (value) => `${Math.round((value / 4) * 100)} percent`
   },
   octaveOffset: {
     id: "octaveOffset",
@@ -170,13 +161,9 @@ export const PARAM_DEFS: Record<SynthParamId, ParamDef> = {
     step: 1,
     largeStep: 1,
     format: formatOctave,
-    formatSpoken: (value) => (value === 0 ? "0 octaves" : `${value > 0 ? "up" : "down"} ${Math.abs(value)} octave`),
-    group: "more"
+    formatSpoken: (value) => (value === 0 ? "0 octaves" : `${value > 0 ? "up" : "down"} ${Math.abs(value)} octave`)
   }
 };
-
-export const ESSENTIAL_PARAM_IDS: SynthParamId[] = ["cutoffHz", "resonance", "attack", "decay"];
-export const MORE_PARAM_IDS: SynthParamId[] = ["sustain", "release", "filterEnvAmount", "octaveOffset"];
 
 /** Normalized slider position (0–1) → parameter value. */
 export function normToValue(id: SynthParamId, norm: number): number {

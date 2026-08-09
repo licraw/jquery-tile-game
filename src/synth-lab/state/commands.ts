@@ -15,6 +15,7 @@ import {
   CHORD_IDS,
   DRUM_LANES,
   STEP_COUNT,
+  type AmpEnvelope,
   type ChordId,
   type DrumLaneId,
   type DrumStep,
@@ -47,6 +48,7 @@ export type SynthLabCommand =
   | { type: "setTrackLevel"; trackId: TrackId; level: number }
   | { type: "setWaveform"; trackId: SynthTrackId; waveform: Waveform }
   | { type: "setSynthParam"; trackId: SynthTrackId; param: SynthParamId; value: number }
+  | { type: "setEnvelope"; trackId: SynthTrackId; env: Partial<AmpEnvelope> }
   | { type: "setVoices"; trackId: "pads" | "lead"; voices: 1 | 2 | 4 }
   | { type: "applyPatch"; trackId: SynthTrackId; patch: Partial<SynthPatch> }
   | { type: "resetPatch"; trackId: SynthTrackId }
@@ -263,6 +265,39 @@ function buildMutation(project: Project, command: SynthLabCommand): MutationSpec
         }),
         label: `${TRACK_LABELS[command.trackId]} · ${PARAM_DEFS[command.param].label}`,
         coalesceKey: `param:${command.trackId}:${command.param}`
+      };
+    }
+
+    case "setEnvelope": {
+      // The ADSR Envelope is one control, so one drag across it is one undo
+      // step even when it moves two parameters (the decay/sustain corner).
+      // Values still land on the same patch.ampEnv fields every other surface
+      // reads and writes — there is no second envelope model.
+      const patch = synthPatch(project, command.trackId);
+      if (!patch) return { error: `Track "${command.trackId}" has no synth patch.` };
+      let next: SynthPatch = { ...patch, ampEnv: { ...patch.ampEnv } };
+      const entries: [SynthParamId, number | undefined][] = [
+        ["attack", command.env.attack],
+        ["decay", command.env.decay],
+        ["sustain", command.env.sustain],
+        ["release", command.env.release]
+      ];
+      const touched: SynthParamId[] = [];
+      for (const [param, value] of entries) {
+        if (value === undefined) continue;
+        if (!Number.isFinite(value)) return { error: `Parameter "${param}" must be a number.` };
+        next = withParamValue(next, param, value);
+        touched.push(param);
+      }
+      if (touched.length === 0) return { error: "setEnvelope needs at least one value." };
+      const label =
+        touched.length === 1
+          ? `${TRACK_LABELS[command.trackId]} · ${PARAM_DEFS[touched[0]].label}`
+          : `${TRACK_LABELS[command.trackId]} · Envelope`;
+      return {
+        project: setTrack(project, command.trackId, { patch: next }),
+        label,
+        coalesceKey: `envelope:${command.trackId}`
       };
     }
 

@@ -2,11 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import { PARAM_DEFS, valueToNorm, type SynthParamId } from "@/synth-lab/engine/paramMap";
-import { getUndoStack, type Transaction } from "@/synth-lab/state/history";
+import { getUndoStack } from "@/synth-lab/state/history";
+import { beforePatchFor } from "@/synth-lab/state/patchDiff";
 import { useSynthLabState } from "@/synth-lab/state/projectStore";
 import { performUndo } from "@/synth-lab/state/undoActions";
 import { uiStore, useUiState } from "@/synth-lab/state/uiStore";
-import type { AgentAction, SynthPatch, SynthTrackId, TrackId } from "@/synth-lab/state/types";
+import type { AgentAction, SynthTrackId, TrackId } from "@/synth-lab/state/types";
 import styles from "@/synth-lab/styles.module.css";
 import { TRACK_META } from "./trackMeta";
 
@@ -23,20 +24,6 @@ const PARAM_SEGMENTS = new Set(Object.keys(PARAM_DEFS));
 function paramIdForPath(path: string): SynthParamId | null {
   const tail = path.split(".").pop() ?? "";
   return PARAM_SEGMENTS.has(tail) ? (tail as SynthParamId) : null;
-}
-
-function beforePatchFor(trackId: SynthTrackId, txn: Transaction, current: SynthPatch): SynthPatch {
-  const patch: SynthPatch = { ...current, ampEnv: { ...current.ampEnv } };
-  for (const change of txn.changes) {
-    const [tracks, id, patchKey, ...rest] = change.path;
-    if (tracks !== "tracks" || id !== trackId || patchKey !== "patch") continue;
-    if (rest[0] === "ampEnv" && typeof rest[1] === "string") {
-      (patch.ampEnv as unknown as Record<string, unknown>)[rest[1]] = change.before;
-    } else if (typeof rest[0] === "string") {
-      (patch as unknown as Record<string, unknown>)[rest[0]] = change.before;
-    }
-  }
-  return patch;
 }
 
 export function AgentActionCard({ trackId }: { trackId: TrackId }) {
