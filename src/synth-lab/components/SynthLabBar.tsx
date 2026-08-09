@@ -89,7 +89,7 @@ export function SynthLabBar({ audioStarted, chipLabel }: SynthLabBarProps) {
       {dialog === "help" ? (
         <ConfirmDialog
           title="How Synth Lab works"
-          body="Four tracks loop one bar, forever. Select a lane to edit its pattern and sound — the loop keeps playing while you change things. The coach card on the right offers challenges; Free Play is always one click away. Every change can be undone."
+          body="Four tracks loop two bars, forever. Select a lane to edit its pattern and sound — the loop keeps playing while you change things, and BAR 1 / BAR 2 switches which bar the grid is showing without interrupting it. The coach card on the right offers challenges; Free Play is always one click away. Every change can be undone."
           confirmLabel="Got it"
           danger={false}
           onConfirm={() => setDialog(null)}

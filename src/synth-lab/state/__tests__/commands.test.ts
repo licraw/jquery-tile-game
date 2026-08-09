@@ -3,6 +3,7 @@ import { commitGesture, dispatch } from "../commands";
 import { createDefaultState } from "../defaultProject";
 import { canRedo, canUndo, resetHistory } from "../history";
 import { projectStore } from "../projectStore";
+import { DRUM_LANES, STEP_COUNT, STEPS_PER_BAR } from "../types";
 
 function reset() {
   projectStore.set(createDefaultState());
@@ -14,9 +15,20 @@ beforeEach(reset);
 
 describe("command validation", () => {
   it("rejects out-of-range steps", () => {
-    expect(dispatch({ type: "cycleDrumStep", lane: "kick", step: 16 }).ok).toBe(false);
+    expect(dispatch({ type: "cycleDrumStep", lane: "kick", step: 32 }).ok).toBe(false);
     expect(dispatch({ type: "cycleDrumStep", lane: "kick", step: -1 }).ok).toBe(false);
     expect(dispatch({ type: "setStepNote", trackId: "bass", step: 99, row: 0 }).ok).toBe(false);
+  });
+
+  it("accepts every step of both bars", () => {
+    for (let step = 0; step < STEP_COUNT; step += 1) {
+      expect(dispatch({ type: "setDrumStep", lane: "kick", step, value: "on" }).ok).toBe(true);
+      expect(dispatch({ type: "setStepNote", trackId: "bass", step, row: 1 }).ok).toBe(true);
+      expect(dispatch({ type: "setStepChord", step, chord: "Cm" }).ok).toBe(true);
+    }
+    // Step 31 is the last step of bar 2; step 32 is off the end of the loop.
+    expect(dispatch({ type: "setStepNote", trackId: "lead", step: STEP_COUNT - 1, row: 0 }).ok).toBe(true);
+    expect(dispatch({ type: "setStepNote", trackId: "lead", step: STEP_COUNT, row: 0 }).ok).toBe(false);
   });
 
   it("rejects invalid rows and chords", () => {
@@ -80,6 +92,83 @@ describe("pattern semantics", () => {
     expect(projectStore.get().project.tracks.pads.pattern.steps[0]).toBe("Fm");
     dispatch({ type: "setStepChord", step: 0, chord: null });
     expect(projectStore.get().project.tracks.pads.pattern.steps[0]).toBe(null);
+  });
+});
+
+describe("two-bar patterns", () => {
+  it("gives every track 32 steps across both bars", () => {
+    const { tracks } = projectStore.get().project;
+    expect(STEP_COUNT).toBe(32);
+    expect(STEPS_PER_BAR).toBe(16);
+    for (const lane of DRUM_LANES) {
+      expect(tracks.drums.pattern.lanes[lane]).toHaveLength(STEP_COUNT);
+    }
+    expect(tracks.bass.pattern.steps).toHaveLength(STEP_COUNT);
+    expect(tracks.pads.pattern.steps).toHaveLength(STEP_COUNT);
+    expect(tracks.lead.pattern.steps).toHaveLength(STEP_COUNT);
+  });
+
+  it("keeps all four tracks the same length so they stay synchronized", () => {
+    const { tracks } = projectStore.get().project;
+    const lengths = new Set<number>([
+      ...DRUM_LANES.map((lane) => tracks.drums.pattern.lanes[lane].length),
+      tracks.bass.pattern.steps.length,
+      tracks.pads.pattern.steps.length,
+      tracks.lead.pattern.steps.length
+    ]);
+    expect([...lengths]).toEqual([STEP_COUNT]);
+  });
+
+  it("edits bar 1 and bar 2 independently", () => {
+    // Same position within each bar — a paging bug that folded bar 2 onto bar
+    // 1 would make these two writes collide.
+    dispatch({ type: "setStepNote", trackId: "lead", step: 5, row: 1 });
+    dispatch({ type: "setStepNote", trackId: "lead", step: 5 + STEPS_PER_BAR, row: 6 });
+    const steps = projectStore.get().project.tracks.lead.pattern.steps;
+    expect(steps[5]).toBe(1);
+    expect(steps[21]).toBe(6);
+
+    dispatch({ type: "setStepNote", trackId: "lead", step: 5, row: null });
+    expect(projectStore.get().project.tracks.lead.pattern.steps[5]).toBe(null);
+    expect(projectStore.get().project.tracks.lead.pattern.steps[21]).toBe(6);
+  });
+
+  it("carries drum, note and chord data in both bars", () => {
+    dispatch({ type: "setDrumStep", lane: "perc", step: 30, value: "accent" });
+    dispatch({ type: "setStepChord", step: 20, chord: "Fm" });
+    const { tracks } = projectStore.get().project;
+    expect(tracks.drums.pattern.lanes.perc[30]).toBe("accent");
+    expect(tracks.pads.pattern.steps[20]).toBe("Fm");
+    // The shipped jam actually uses bar 2 rather than leaving it empty.
+    const jam = createDefaultState().project;
+    expect(jam.tracks.bass.pattern.steps.slice(STEPS_PER_BAR).some((row) => row !== null)).toBe(true);
+    expect(jam.tracks.lead.pattern.steps.slice(STEPS_PER_BAR).some((row) => row !== null)).toBe(true);
+    expect(jam.tracks.pads.pattern.steps.slice(STEPS_PER_BAR).some((c) => c !== null)).toBe(true);
+    expect(
+      DRUM_LANES.some((lane) => jam.tracks.drums.pattern.lanes[lane].slice(STEPS_PER_BAR).some((v) => v !== "off"))
+    ).toBe(true);
+  });
+
+  it("undoes a bar 2 edit without disturbing bar 1", () => {
+    const bar1Before = projectStore.get().project.tracks.bass.pattern.steps[0];
+    dispatch({ type: "setStepNote", trackId: "bass", step: 26, row: 7 });
+    expect(projectStore.get().project.tracks.bass.pattern.steps[26]).toBe(7);
+
+    dispatch({ type: "undo" });
+    const steps = projectStore.get().project.tracks.bass.pattern.steps;
+    expect(steps[26]).toBe(createDefaultState().project.tracks.bass.pattern.steps[26]);
+    expect(steps[0]).toBe(bar1Before);
+    expect(steps).toHaveLength(STEP_COUNT);
+
+    dispatch({ type: "redo" });
+    expect(projectStore.get().project.tracks.bass.pattern.steps[26]).toBe(7);
+  });
+
+  it("defaults the starter jam to 96 BPM", () => {
+    expect(createDefaultState().project.tempoBpm).toBe(96);
+    dispatch({ type: "setTempo", bpm: 140 });
+    dispatch({ type: "resetProject" });
+    expect(projectStore.get().project.tempoBpm).toBe(96);
   });
 });
 

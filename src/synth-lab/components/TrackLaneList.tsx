@@ -4,7 +4,7 @@ import { type CSSProperties } from "react";
 import { commitGesture, dispatch } from "@/synth-lab/state/commands";
 import { trackStrip } from "@/synth-lab/state/derive";
 import { useSynthLabState } from "@/synth-lab/state/projectStore";
-import { TRACK_IDS, type TrackId } from "@/synth-lab/state/types";
+import { STEPS_PER_BAR, TRACK_IDS, type TrackId } from "@/synth-lab/state/types";
 import styles from "@/synth-lab/styles.module.css";
 import { TRACK_META, toneStyle } from "./trackMeta";
 
@@ -35,13 +35,16 @@ function TrackLane({ trackId }: { trackId: TrackId }) {
         <span className={styles.laneName}>{meta.name}</span>
         <span className={styles.laneMeta}>{meta.meta}</span>
       </button>
+      {/* The strip shows the WHOLE two-bar loop, unlike the editor grid which
+          pages one bar — it is the at-a-glance overview, so the extra gap at
+          the bar boundary is the only thing needed to read it as two bars. */}
       <div className={styles.laneStrip} aria-hidden="true">
         {strip.map((cell, index) => (
           <span
             key={index}
             className={`${styles.stripCell} ${
-              cell === "accent" ? styles.stripCellAccent : cell === "on" ? styles.stripCellOn : ""
-            }`}
+              index > 0 && index % STEPS_PER_BAR === 0 ? styles.stripCellBarStart : ""
+            } ${cell === "accent" ? styles.stripCellAccent : cell === "on" ? styles.stripCellOn : ""}`}
           />
         ))}
       </div>

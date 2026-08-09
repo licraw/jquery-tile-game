@@ -83,7 +83,11 @@ export function ParameterSlider({ trackId, param, highlight = null }: ParameterS
         value={Math.round(norm * 1000)}
         aria-label={`${def.label}, ${def.technical.replace(/\s+·\s+/g, ", ").toLowerCase()}`}
         aria-valuetext={def.formatSpoken(value)}
-        style={{ "--sl-fill": `${norm * 100}%` } as CSSProperties}
+        // Rounded before serialising: the log-curve params run through
+        // Math.log, whose precision is implementation-approximated, so Node and
+        // the browser disagree on the last bit and React reports a hydration
+        // mismatch on the raw float. Three decimals is well under a pixel.
+        style={{ "--sl-fill": `${(norm * 100).toFixed(3)}%` } as CSSProperties}
         onChange={(event) => setValue(normToValue(param, Number(event.target.value) / 1000))}
         onKeyDown={onKeyDown}
         onPointerUp={commitGesture}

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { SynthParamId } from "@/synth-lab/engine/paramMap";
-import type { SynthTrackId } from "./types";
+import { BAR_COUNT, type BarIndex, type SynthTrackId } from "./types";
 
 /**
  * Ephemeral UI state that is deliberately outside projectStore: the
@@ -41,6 +41,14 @@ interface UiState {
   agentCardActionId: string | null;
   /** present_coach_message writes into the Lesson Card body, never a second surface. */
   coachMessage: { message: string } | null;
+  /**
+   * Which bar of the two-bar loop the editor is showing. One value for the
+   * whole workspace — every track pages together, like a groovebox. This is a
+   * viewing choice only: it never touches project state, history or playback,
+   * and playback never changes it (the playing bar is indicated instead, so a
+   * user editing bar 2 is not yanked back to bar 1 mid-edit).
+   */
+  visibleBar: BarIndex;
 }
 
 let state: UiState = {
@@ -48,7 +56,8 @@ let state: UiState = {
   receipt: null,
   agentStatus: "absent",
   agentCardActionId: null,
-  coachMessage: null
+  coachMessage: null,
+  visibleBar: 0
 };
 const SERVER_STATE: UiState = { ...state };
 const listeners = new Set<() => void>();
@@ -93,8 +102,17 @@ export const uiStore = {
   },
   setCoachMessage(coachMessage: { message: string } | null): void {
     setState({ ...state, coachMessage });
+  },
+  setVisibleBar(visibleBar: BarIndex): void {
+    if (!Number.isInteger(visibleBar) || visibleBar < 0 || visibleBar >= BAR_COUNT) return;
+    if (state.visibleBar === visibleBar) return;
+    setState({ ...state, visibleBar });
   }
 };
+
+export function useVisibleBar(): BarIndex {
+  return useUiState((s) => s.visibleBar);
+}
 
 export function useUiState<T>(selector: (s: UiState) => T): T {
   return useSyncExternalStore(

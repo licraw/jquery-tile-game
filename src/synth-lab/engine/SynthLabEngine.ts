@@ -3,6 +3,7 @@ import { dispatch } from "@/synth-lab/state/commands";
 import { playheadStore } from "@/synth-lab/state/playheadStore";
 import { projectStore } from "@/synth-lab/state/projectStore";
 import {
+  BAR_COUNT,
   CHORD_VOICINGS,
   DRUM_LANES,
   STEP_COUNT,
@@ -30,6 +31,7 @@ const DRUM_SAMPLE_URLS: Record<DrumLaneId, string> = {
   perc: "/audio/synth-lab/perc.wav"
 };
 
+/** Absolute step indices 0–31: two bars of sixteenths, one Sequence event each. */
 const STEP_INDICES = Array.from({ length: STEP_COUNT }, (_, i) => i);
 
 // Fixed filter-envelope shape (not user-exposed): fast attack, audible sweep.
@@ -114,7 +116,7 @@ export class SynthLabEngine {
     this.pads = new Tone.PolySynth(Tone.MonoSynth).connect(this.trackGains.pads);
     // Plan §8 specifies 8 from a spike patch with a short release. The designed
     // pad character (brief §8.3) uses a ~1.2 s release, so a 3-note chord
-    // changing every beat at 112 BPM keeps three generations of voices alive
+    // changing every beat at 96 BPM keeps three generations of voices alive
     // (~9) and Tone drops notes at 8. 12 covers it and the graph stays trivial.
     this.pads.maxPolyphony = 12;
     this.lead = new Tone.MonoSynth().connect(this.trackGains.lead);
@@ -122,7 +124,10 @@ export class SynthLabEngine {
     const transport = Tone.getTransport();
     transport.loop = true;
     transport.loopStart = 0;
-    transport.loopEnd = "1m";
+    // Two bars. Each Sequence below holds 32 "16n" events, so its own length is
+    // also 2 measures — the sequences and the transport loop stay phase-locked,
+    // which is what keeps all four tracks synchronized across the bar boundary.
+    transport.loopEnd = `${BAR_COUNT}m`;
     transport.timeSignature = 4;
 
     this.sequences.push(
