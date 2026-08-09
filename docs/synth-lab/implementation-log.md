@@ -454,59 +454,14 @@ The Next dev overlay reports one hydration warning from `ParameterSlider`
 reproduces on the pre-change baseline and is unrelated to this work, so it was
 left alone.
 
-## 10. Mobile audio startup stabilization (2026-08-09)
+## 10. iPhone audio investigation (2026-08-09)
 
-### 10.1 Root cause
+The reported iPhone silence was isolated on real hardware to the device's
+Ring/Silent setting: with Silent Mode enabled, the Synth Lab loop and Web Audio
+transport ran but iOS muted Web Audio output; disabling Silent Mode restored
+sound. This was not an engine, Tone context, sample-decoding, routing, or
+user-activation failure.
 
-The Start Gate click did **not** call `Tone.start()` from its trusted user
-gesture. `SynthLabApp.startAudio()` first awaited a dynamic import of the engine
-module; only after that unrelated promise continuation did `startEngine()` call
-`Tone.start()`. Desktop autoplay policies tolerated this path, while iOS Safari
-could reject or leave the context suspended because transient user activation
-had expired. The earlier implementation therefore did not satisfy the plan's
-own “inside the Start-gate click handler” requirement.
-
-Inspection found one Tone global context/transport, one engine singleton, direct
-instrument/player → track gain → master gain → destination routing, non-silent
-default gain values, and supported 44.1 kHz 16-bit mono PCM WAV samples. No
-second engine, disconnected destination, silent master, or sample-format issue
-was found. The existing visibility/state-change listener correctly stops the
-transport when iOS suspends the context, but the old subsequent Play path only
-dispatched `play`; it did not resume that suspended context.
-
-### 10.2 Fix
-
-- The client module now has Tone/the engine ready before interaction, and the
-  first operation in the Start/Play handler is `startEngine()`. That method
-  invokes `Tone.start()` synchronously before any promise is awaited.
-- Startup now verifies the Tone context is actually `running`; a resolved
-  resume that remains suspended is treated as failure.
-- A small startup coordinator deduplicates concurrent engine construction while
-  still calling resume for every later trusted Play gesture. This preserves one
-  engine, one Tone context, and one transport.
-- Play after background suspension uses the same resume path. Failure restores
-  the Start Gate with the recoverable copy: “Audio couldn't start. Tap to try
-  again.” A retry performs a fresh `Tone.start()` from that new tap.
-- Normal playback is quiet. Development failures retain one structured console
-  snapshot covering browser/platform, user activation, Web Audio/Tone context,
-  transport, destination, engine, and sample-loading state.
-
-### 10.3 Validation
-
-- `npm test`: 90 passing across 8 files. New tests verify synchronous resume
-  invocation, idempotent/concurrent singleton creation, repeated resume, and
-  failure/retry, plus disposal of an initialization that finishes after route
-  cleanup.
-- `npx tsc --noEmit`: clean.
-- `npm run build`: clean (after allowing the existing Google Fonts fetch).
-- Static audio-path validation: synth nodes and all four sample players connect
-  through non-silent track/master gains to Tone Destination; all drum files are
-  valid PCM WAV and decode-compatible by format. Sequence callbacks schedule
-  both synth notes and loaded sample players on the shared transport.
-
-No mobile hardware was available in this environment. Therefore audible synth
-and drum output is **not claimed as real-device verified**. Required device
-checklist, in order: iPhone Safari, iPhone Chrome, Android Chrome — tap Start and
-hear the synth tracks plus drums separately; background/foreground and confirm
-Play resumes; reload/re-enter and confirm one engine/context; deny/interfere
-with audio start and confirm the retry gate performs a successful new resume.
+An attempted startup-lifecycle change made during investigation was fully
+reverted because it did not address the confirmed cause. Synth Lab retains the
+original single engine/context/transport architecture and dynamic engine load.

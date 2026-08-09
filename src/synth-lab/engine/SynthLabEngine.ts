@@ -15,7 +15,6 @@ import {
   type TrackId
 } from "@/synth-lab/state/types";
 import { levelToGain, resonanceToQ } from "./paramMap";
-import { createAudioStartup } from "./audioStartup";
 
 /**
  * SynthLabEngine (plan §6) owns every Tone node. React never touches Tone;
@@ -304,58 +303,27 @@ export class SynthLabEngine {
   }
 }
 
-const audioStartup = createAudioStartup(
-  () => {
-    const started = Tone.start();
-    return started.then(() => {
-      if (Tone.getContext().state !== "running") {
-        throw new Error(`AudioContext remained ${Tone.getContext().state} after Tone.start()`);
-      }
-    });
-  },
-  async () => {
-    const engine = new SynthLabEngine();
-    engine.attach();
-    await engine.loaded;
-    return engine;
-  },
-  (engine) => engine.dispose()
-);
+let engineInstance: SynthLabEngine | null = null;
 
 /**
  * Start gesture entry point: resumes the AudioContext (must be called from a
  * user gesture), creates the singleton engine, and waits for drum samples.
  */
 export async function startEngine(): Promise<SynthLabEngine> {
-  return audioStartup.start();
+  await Tone.start();
+  if (!engineInstance) {
+    engineInstance = new SynthLabEngine();
+    engineInstance.attach();
+  }
+  await engineInstance.loaded;
+  return engineInstance;
 }
 
 export function getEngineIfStarted(): SynthLabEngine | null {
-  return audioStartup.get();
-}
-
-/** Quiet, on-demand diagnostics for development failures; never logs during normal playback. */
-export function getAudioDiagnostics() {
-  const context = Tone.getContext();
-  const engine = audioStartup.get();
-  return {
-    userAgent: navigator.userAgent,
-    platform: navigator.platform,
-    userActivation: navigator.userActivation
-      ? { isActive: navigator.userActivation.isActive, hasBeenActive: navigator.userActivation.hasBeenActive }
-      : "unavailable",
-    contextState: context.state,
-    toneContextState: Tone.getContext().state,
-    transportState: Tone.getTransport().state,
-    destination: {
-      mute: Tone.getDestination().mute,
-      volumeDb: Tone.getDestination().volume.value
-    },
-    engineCreated: engine !== null,
-    sampleStatus: engine ? { ...engine.sampleStatus } : null
-  };
+  return engineInstance;
 }
 
 export function disposeEngine(): void {
-  audioStartup.clear()?.dispose();
+  engineInstance?.dispose();
+  engineInstance = null;
 }
