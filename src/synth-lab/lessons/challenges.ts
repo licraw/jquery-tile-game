@@ -60,12 +60,12 @@ export const CHALLENGES: Challenge[] = [
     tag: "RHYTHM",
     concept: null,
     title: "Build the beat.",
-    body: "The drums are the floor everything else stands on. Add or move a couple of steps in the drum grid — the loop keeps playing while you edit.",
+    body: "The drums are the floor everything else stands on. Add or move a couple of steps in the drum grid — the loop keeps playing while you edit, and BAR 1 / BAR 2 switches which half of it you're looking at.",
     listening: "Listening for your drum edits…",
     trackId: "drums",
     highlight: null,
     successTitle: "That's a groove.",
-    successBody: "You just used a step sequencer: the loop is 16 steps, and each cell is one sixteenth of the bar. Everything in Synth Lab runs on this one-bar loop.",
+    successBody: "You just used a step sequencer: each cell is one sixteenth of a bar, and the loop runs two bars — 32 steps. The grid shows one bar at a time, so BAR 2 is where the pattern can answer itself instead of just repeating.",
     validate: (project, start) => countDrumEdits(project, start) >= 2
   },
   {

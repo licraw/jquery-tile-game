@@ -206,12 +206,24 @@
 }
 
 .loopTrack {
+  position: relative;
   display: flex;
   width: 100%;
   height: 8px;
   border-radius: 999px;
   background: var(--sl-game-bg);
   overflow: hidden;
+}
+
+/* Halfway tick: loop progress is across two bars, so the eye needs the seam. */
+.loopBarMark {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 8px;
+  background: var(--panel);
+  opacity: 0.85;
 }
 
 .loopFill {
@@ -431,17 +443,30 @@
 .laneStrip {
   display: flex;
   flex: 1 0 0;
-  gap: 3px;
+  /* Tighter than the one-bar strip: 32 cells need the room back. */
+  gap: 2px;
   min-width: 1px;
   overflow: hidden;
 }
 
+/* The strip is a proportional overview, not a precise editor, so the cells
+   flex to whatever the lane can spare. Fixed-width cells would fit 16 steps
+   but clip the tail of bar 2 on narrower desktops — silently hiding pattern
+   the user has written. Capped at 8px so they do not stretch when there is
+   room to spare. */
 .stripCell {
-  flex-shrink: 0;
-  width: 14px;
+  flex: 1 1 0;
+  min-width: 3px;
+  max-width: 8px;
   height: 18px;
-  border-radius: 3px;
+  border-radius: 2px;
   background: var(--sl-game-bg);
+}
+
+/* Extra breathing room where bar 2 begins — the only marking the overview
+   strip needs to read as two bars rather than one long row. */
+.stripCellBarStart {
+  margin-left: 9px;
 }
 
 .stripCellOn {
@@ -578,6 +603,62 @@
   font-size: 10px;
   font-weight: var(--font-weight-regular);
   white-space: nowrap;
+}
+
+/* ---------- Bar selector ---------- */
+
+/* Pages the grid between the two bars of the loop. Built from the same
+   segmented-control vocabulary as the waveform/voices controls so it reads as
+   part of the Synth Lab control system rather than a navigation widget. */
+.barSelector {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--sl-game-bg);
+}
+
+.barButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.8px;
+  line-height: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.barButtonSelected {
+  background: var(--sl-tone);
+  color: var(--sl-action-ink);
+}
+
+/* Always laid out, coloured only while its bar is sounding, so the row never
+   reflows and the playing bar stays readable whether or not it is selected. */
+.barPip {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.barPipPlaying {
+  background: var(--sl-tone);
+}
+
+.barButtonSelected .barPipPlaying {
+  background: var(--sl-action-ink);
 }
 
 .noteGridBody {
@@ -1546,6 +1627,13 @@
     width: 100%;
   }
 
+  /* Below this width the lane cannot spare enough room to show all 32 steps,
+     and a clipped strip would hide the end of bar 2 without saying so. The
+     editor grid (with its BAR selector) is the pattern view from here down. */
+  .laneStrip {
+    display: none;
+  }
+
   .coachRail {
     order: -1;
     flex-direction: row;
@@ -1588,10 +1676,6 @@
     order: 4;
   }
 
-  .laneStrip {
-    display: none;
-  }
-
   .laneIdentity {
     flex: 1 0 0;
     width: auto;
@@ -1630,6 +1714,12 @@
   .noteGridHeader {
     flex-wrap: wrap;
     gap: 4px 16px;
+  }
+
+  /* Once the header wraps, the selector sits on its own line — align it with
+     the eyebrow above it instead of stranding it against the right edge. */
+  .barSelector {
+    margin-left: 0;
   }
 
   .noteGridEyebrow,

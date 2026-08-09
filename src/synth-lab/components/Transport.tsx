@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { commitGesture, dispatch } from "@/synth-lab/state/commands";
 import { usePlayheadStep } from "@/synth-lab/state/playheadStore";
 import { useSynthLabState } from "@/synth-lab/state/projectStore";
-import { STEP_COUNT } from "@/synth-lab/state/types";
+import { BAR_COUNT, STEP_COUNT, barOfStep, stepWithinBar } from "@/synth-lab/state/types";
 import styles from "@/synth-lab/styles.module.css";
 
 interface TransportProps {
@@ -70,26 +70,16 @@ export function Transport({ onRequestPlay }: TransportProps) {
   const step = usePlayheadStep();
   const playing = transportStatus === "playing";
 
-  // The audio clock only reports the step; count loops locally for "BAR n".
-  const barRef = useRef(1);
-  const lastStepRef = useRef<number | null>(null);
-  if (step === null) {
-    barRef.current = 1;
-    lastStepRef.current = null;
-  } else {
-    if (lastStepRef.current !== null && step < lastStepRef.current) {
-      barRef.current += 1;
-    }
-    lastStepRef.current = step;
-  }
-
   const [tempoDraft, setTempoDraft] = useState<string | null>(null);
 
   useEffect(() => {
     setTempoDraft(null);
   }, [tempoBpm]);
 
-  const beat = step === null ? null : Math.floor(step / 4) + 1;
+  // BAR is the position inside the two-bar loop (1 or 2), not a count of how
+  // many times the loop has come round — the loop has no elapsed time to show.
+  const bar = step === null ? null : barOfStep(step) + 1;
+  const beat = step === null ? null : Math.floor(stepWithinBar(step) / 4) + 1;
   const progress = step === null ? 0 : ((step + 1) / STEP_COUNT) * 100;
 
   return (
@@ -139,14 +129,16 @@ export function Transport({ onRequestPlay }: TransportProps) {
       <div className={styles.transportPosition}>
         <div className={styles.loopTrack} aria-hidden="true">
           <div className={styles.loopFill} style={{ width: `${progress}%` }} />
+          {/* Marks where bar 1 ends, so loop progress reads as two bars. */}
+          <div className={styles.loopBarMark} />
         </div>
         <span
           className={`${styles.positionLabel} ${playing ? styles.positionPlaying : styles.positionStopped}`}
           role="status"
         >
-          {playing && beat !== null
-            ? `BAR ${barRef.current} · BEAT ${beat}   —   LOOPING`
-            : `STOPPED   —   1 BAR LOOP`}
+          {playing && bar !== null && beat !== null
+            ? `BAR ${bar} · BEAT ${beat}   —   LOOPING`
+            : `STOPPED   —   ${BAR_COUNT} BAR LOOP`}
         </span>
       </div>
 

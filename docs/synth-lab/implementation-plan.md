@@ -18,7 +18,7 @@ The recommended architecture:
 - A **plain-TypeScript project store** (module singleton + `useSyncExternalStore`) owns project state; a **semantic command layer** is the only way to mutate it. Commands produce **before/after transactions** that power undo and, later, WebMCP.
 - All of the hard requirements were **proven in a working spike** (see §5): shared transport, sample-based drums, mono bass with filter envelope, polyphonic chord pads, live parameter/pattern/tempo edits during playback, gesture-gated audio start.
 
-The design is fully specified in the `Soft Arcade Synth Lab` Figma file: 16-step one-bar loop in C minor, scale-locked note grids, 11 new Synth Lab components, dual perceptual/technical labels, horizontal sliders, coach rail, inline agent cards. The file's `11 — Handoff` page enumerates behavior contracts this plan folds in verbatim.
+The design is fully specified in the `Soft Arcade Synth Lab` Figma file: 32-step two-bar loop in C minor (the grid pages one bar at a time via BAR 1 / BAR 2), scale-locked note grids, 11 new Synth Lab components, dual perceptual/technical labels, horizontal sliders, coach rail, inline agent cards. The file's `11 — Handoff` page enumerates behavior contracts this plan folds in verbatim.
 
 ---
 
@@ -70,7 +70,7 @@ Facts verified in the repo (2026-08-07):
 
 **`DECISION — Audio engine: Tone.js 15.1.22` (npm `tone`, pinned).** Rationale in §5/§6. Raw Web Audio rejected: we would re-implement a musical transport, look-ahead scheduler, envelope/filter-envelope primitives, and polyphonic voice allocation that Tone.js already provides and that the spike verified. No other library evaluated — nothing else offers a musical transport + synth primitives at this maturity, and the brief already prefers Tone.js.
 
-**`DECISION — Musical clock: the single global Tone.Transport`** (`Tone.getTransport()`), `loop = true`, `loopStart 0`, `loopEnd "1m"`, 4/4, 16 steps of `"16n"`. The audio clock is authoritative; React renders a non-authoritative playhead via `transport.scheduleRepeat` + `Tone.getDraw()` (§9).
+**`DECISION — Musical clock: the single global Tone.Transport`** (`Tone.getTransport()`), `loop = true`, `loopStart 0`, `loopEnd "2m"`, 4/4, 32 steps of `"16n"` (two bars). The audio clock is authoritative; React renders a non-authoritative playhead via `transport.scheduleRepeat` + `Tone.getDraw()` (§9).
 
 **`DECISION — State ownership: a plain-TS project store, mutated only through commands.`** `projectStore` (module singleton, immutable snapshots, `useSyncExternalStore` for React). The engine subscribes to the store; the UI never calls the engine directly for state changes. Transport *position* is deliberately NOT in this store (§9, §11).
 
@@ -187,7 +187,9 @@ export type TrackId = "drums" | "bass" | "pads" | "lead";
 export type DrumLaneId = "kick" | "snare" | "hat" | "perc";
 export type DrumStep = "off" | "on" | "accent";          // Step component: Off / On / Accent
 export type Waveform = "sine" | "triangle" | "sawtooth" | "square";
-export const STEP_COUNT = 16;                              // one bar, 16 × 16n (Figma: fixed)
+export const STEPS_PER_BAR = 16;                           // one bar of 16n
+export const BAR_COUNT = 2;                                // two bars (Figma: fixed)
+export const STEP_COUNT = STEPS_PER_BAR * BAR_COUNT;       // 32 absolute steps per pattern
 
 // C minor, one octave — the only scale in MVP (Figma decision G1)
 // Row index 0 = lowest row. Bass rows C1..C2, Lead rows C3..C4.
@@ -222,8 +224,8 @@ export interface Track<P> {
 }
 
 export interface Project {
-  schemaVersion: 1;
-  tempoBpm: number;                       // 60–180, default 112 (Figma)
+  schemaVersion: 2;                       // 1 = legacy 16-step, migrated on load
+  tempoBpm: number;                       // 60–180, default 96
   masterLevel: number;                    // 0–1
   tracks: {
     drums: Track<DrumPattern>; bass: Track<NotePattern>;
@@ -254,7 +256,7 @@ export interface AgentAction {           // brief §22; rendered by Agent Action
 }
 ```
 
-The default project is the **prebuilt jam** (brief §26): the exact pattern content shown in Figma 07 frames is representative, not prescriptive — author a musically coherent 16-step jam in C minor at 112 BPM during Phase 2/3 and keep it in `src/synth-lab/state/defaultProject.ts`.
+The default project is the **prebuilt jam** (brief §26): the exact pattern content shown in Figma 07 frames is representative, not prescriptive — author a musically coherent 32-step (two-bar) jam in C minor at 96 BPM during Phase 2/3, with bar 2 varying rather than duplicating bar 1 and keep it in `src/synth-lab/state/defaultProject.ts`.
 
 ---
 
@@ -311,8 +313,8 @@ Shared trigger note derivation: `noteName(rowIndex, patch) = SCALE_DEGREES[row] 
 ## 9. Sequencing and timing
 
 - **BPM source of truth:** `project.tempoBpm` in the store; engine mirrors it to `transport.bpm` (`rampTo(x, 0.1)` — click-free, verified). UI reads the store, never the transport.
-- **Transport position source of truth:** `Tone.Transport` only. It is *deliberately absent* from `projectStore` — position changes ~9×/s at 112 BPM and would churn React state and persistence.
-- **Loop:** 1 bar, 4/4, `loopEnd "1m"`, 16 steps at `"16n"`. Fixed in MVP (Figma: fixed 16 columns).
+- **Transport position source of truth:** `Tone.Transport` only. It is *deliberately absent* from `projectStore` — position changes ~6×/s at 96 BPM and would churn React state and persistence.
+- **Loop:** 2 bars, 4/4, `loopEnd "2m"`, 32 steps at `"16n"`. Fixed in MVP. Patterns store all 32 absolute steps; the Note Grid renders 16 columns at a time and BAR 1 / BAR 2 selects which bar (view state in `uiStore`, never in the project or history).
 - **Scheduling:** four `Tone.Sequence`s (per track), each `start(0)` and synced to the transport. Callbacks receive sample-accurate `time` and **read the current store snapshot** to decide what to trigger. This is the whole edit-during-playback story: no re-scheduling, no sequence rebuilds, an edit is audible the next time its step comes around (verified).
 - **UI playhead:** one `transport.scheduleRepeat("16n")` → `Tone.getDraw().schedule(() => playheadStore.set(step))`. `playheadStore` is a second tiny external store; only step cells and the transport loop indicator subscribe. React is never the clock; CSS transitions on the playhead are decoration (and disabled under reduced motion — playhead steps discretely instead).
 - **Tempo change during playback:** allowed, ramped, sequences stay locked (transport-relative). No special casing.
@@ -391,7 +393,21 @@ Designed now, because agent reversibility (brief §6.6) and the Figma undo recei
 - `soft-arcade-synth-lab-project-v1` — `{ schemaVersion, project, selectedTrackId }`, written on a 500 ms debounce after any committed transaction. Restored on route load before the Start gate (the gate shows over the user's own jam, per the Figma first-entry frame layering).
 - `soft-arcade-synth-lab-progress-v1` — `LessonProgress` (+ unlocked recipes). Separate key because **Reset project clears the jam but keeps concept mastery** (Figma reset dialog copy).
 - History and agent activity are session-only — not persisted (reload starts a fresh undo stack; acceptable for MVP and avoids replay/versioning complexity).
-- Corrupt/missing/wrong-version payloads → fall back to the default jam silently. Follow `arcadeName.ts` guard style (`typeof window` checks, try/catch around JSON).
+- Corrupt/unreadable payloads → fall back to the default jam silently. Follow `arcadeName.ts` guard style (`typeof window` checks, try/catch around JSON).
+
+### Schema versions and migration
+
+| `project.schemaVersion` | Shape | On load |
+| --- | --- | --- |
+| `1` | One bar: every pattern array is 16 steps | Migrated to v2 by **repeating bar 1 into bar 2** |
+| `2` (current) | Two bars: every pattern array is 32 steps | Used as-is, lengths normalised defensively |
+
+`migrateProject()` in `state/persistence.ts` owns this. Two rules:
+
+1. **The storage key does not change across schema versions.** Bumping the key would orphan every saved jam under a dead key — the migration upgrades payloads in place instead.
+2. **v1 → v2 duplicates bar 1 rather than padding with rests.** A 16-step loop played twice is bit-for-bit the same audio the user last heard, so a returning user's jam sounds exactly as they left it; padding with rests would silently gut half of it. The envelope's own `schemaVersion` is informational — the migration reads the *project's* version, so a mismatched envelope never discards a readable jam.
+
+Arrays of any other length are treated as corruption rather than a known schema: content is kept and padded/truncated to 32 rather than dropping the project.
 
 ---
 
@@ -415,8 +431,8 @@ Component sources: Synth Lab file page `06 — Components`; DS V1 = `Soft Arcade
 | Synth Lab Bar (32:15) | `SynthLabBar` — identity, mode chip, Reset patch / Reset project / Help | New Synth Lab |
 | Start Gate (48:459) | `StartGate` — premise + Start action; `await Tone.start()` + engine init + sample preload | New (uses shared Dialog/Button treatment) |
 | Transport (28:260, States Stopped/Playing + activity slot) | `Transport` — 44px play/stop, tempo control, loop position, master level, collapsed activity log | New Synth Lab |
-| Track Lane (28:231, Track × Selected = 8 variants) | `TrackLane` — tone bar, identity, read-only pattern summary strip (derived from the same pattern array — never authored separately), mute `M`, level | New Synth Lab |
-| Note Grid (101:265, Track=Drums/Bass/Pads/Lead) | `NoteGrid` — one component, per-track row model; 16 columns; lives only in the editor | New Synth Lab |
+| Track Lane (28:231, Track × Selected = 8 variants) | `TrackLane` — tone bar, identity, read-only pattern summary strip showing all 32 steps with a gap at the bar boundary (derived from the same pattern array — never authored separately), mute `M`, level | New Synth Lab |
+| Note Grid (101:265, Track=Drums/Bass/Pads/Lead) | `NoteGrid` — one component, per-track row model; 16 columns = the visible bar of the 32-step pattern, with the BAR 1 / BAR 2 selector in its header; lives only in the editor | New Synth Lab |
 | Step (28:6, Off/On/Accent/Playhead/Held) | `StepCell` — rendered by NoteGrid; playhead + held are derived states | New Synth Lab |
 | Selected Track Editor (32:154) | `TrackEditor` — header (name, voice chip, "other tracks keep playing"), NoteGrid, groups | New Synth Lab |
 | Waveform Selector (27:72, Active=4) | `WaveformSelector` — radiogroup, glyph + name | New Synth Lab |
@@ -500,7 +516,7 @@ The repo has no test infrastructure; add **Vitest only** (fast, zero-config with
 | Leaked nodes on route navigation | `dispose()` tears down sequences → transport → instruments → gains (spike-verified order); Next.js route unmount triggers it |
 | Multiple transports | Only `Tone.getTransport()`; lint-grep for `new Tone.Transport` in review |
 | Sample loading races | Start button gates on `Players` loaded state; per-sample error status; missing sample = silent lane, not a crash |
-| UI updates at audio rate | Playhead isolated in `playheadStore` (~9 Hz at 112 BPM); slider drags update the store per event but engine writes are cheap param sets; do not put transport position in `projectStore` |
+| UI updates at audio rate | Playhead isolated in `playheadStore` (~6 Hz at 96 BPM, absolute step 0–31); slider drags update the store per event but engine writes are cheap param sets; do not put transport position in `projectStore` |
 | Stale closures in sequence callbacks | Callbacks read `projectStore.get()` at fire time — never captured pattern arrays |
 | Mutating state inside scheduling callbacks | Sequence callbacks are read-only by convention; the only store write from audio land is the Draw-deferred playhead |
 | Slider → audio param churn | Tone params are signals (cheap); coalesce history, not audio writes (audio should respond continuously — that is the product) |
@@ -593,7 +609,7 @@ MVP is done when every brief-§26 "Required" item is shipped and:
 
 - All four tracks play in sample-accurate sync from one transport; edits during playback are audible on the next pass.
 - Bass/Pads/Lead expose waveform, ADSR, cutoff, resonance, filter-envelope amount, octave, voices (where applicable) with dual labels, live values, and keyboard operation per §17.
-- Drums: 4 lanes × 16 steps with off/on/accent; missing samples degrade silently.
+- Drums: 4 lanes × 32 steps with off/on/accent; missing samples degrade silently.
 - One-note-per-column, chord-replace, and scale lock are enforced in the command layer (agent cannot bypass).
 - Undo reverses any transaction — including multi-parameter agent patches as one step — with the restoration receipt; Hear Before/After works without touching history.
 - ≥4 challenges + ≥2 recipes complete against forgiving validators; Free Play always reachable.

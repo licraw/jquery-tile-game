@@ -1,24 +1,33 @@
 "use client";
 
-import { useRef, type KeyboardEvent } from "react";
+import { useEffect, useRef, type KeyboardEvent } from "react";
+import { BarSelector } from "@/synth-lab/components/BarSelector";
 import { dispatch } from "@/synth-lab/state/commands";
 import { usePlayheadStep } from "@/synth-lab/state/playheadStore";
 import { useSynthLabState } from "@/synth-lab/state/projectStore";
 import {
+  BAR_COUNT,
   CHORD_IDS,
   DRUM_LANES,
-  STEP_COUNT,
+  STEPS_PER_BAR,
+  absoluteStep,
+  barOfStep,
   chordAtStep,
   noteRowLabels,
+  stepWithinBar,
   type ChordId,
   type DrumLaneId,
   type TrackId
 } from "@/synth-lab/state/types";
+import { uiStore, useVisibleBar } from "@/synth-lab/state/uiStore";
 import styles from "@/synth-lab/styles.module.css";
 
 /**
- * Note Grid (Figma 101:265): rows change meaning per track, columns are
- * always the 16 steps of the one-bar loop. Lives only in the focused editor.
+ * Note Grid (Figma 101:265): rows change meaning per track, columns are the
+ * 16 steps of ONE bar of the two-bar loop — the visible bar is chosen by the
+ * BAR selector in the header and shared by all four tracks. Patterns are
+ * stored as 32 absolute steps; only this component pages them.
+ * Lives only in the focused editor.
  * - Drums: four instrument lanes; taps cycle off → on → accent → off.
  * - Bass/Lead: eight scale rows, one note per column (monophony visible).
  * - Pads: four diatonic chords; a chord holds (Held cells) until replaced.
@@ -124,18 +133,50 @@ function useGridModel(trackId: TrackId): { rows: GridRowModel[]; eyebrow: string
 export function NoteGrid({ trackId }: { trackId: TrackId }) {
   const { rows, eyebrow, note } = useGridModel(trackId);
   const playheadStep = usePlayheadStep();
+  const visibleBar = useVisibleBar();
   const gridRef = useRef<HTMLDivElement>(null);
   const focusPos = useRef<{ row: number; col: number }>({ row: 0, col: 0 });
+  // Set when an arrow key walks off the edge of the visible bar: the cell to
+  // focus once the newly selected bar has rendered.
+  const pendingFocus = useRef<{ row: number; col: number } | null>(null);
+
+  // The playhead only exists on screen while the bar it is in is the one being
+  // shown; otherwise the grid renders no playhead at all rather than a stale one.
+  const localPlayhead =
+    playheadStep !== null && barOfStep(playheadStep) === visibleBar ? stepWithinBar(playheadStep) : null;
+
+  function focusCell(row: number, col: number) {
+    gridRef.current
+      ?.querySelector<HTMLButtonElement>(`[data-row="${row}"][data-col="${col}"]`)
+      ?.focus();
+  }
+
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (!target) return;
+    pendingFocus.current = null;
+    focusCell(target.row, target.col);
+  }, [visibleBar]);
 
   // Roving tabindex + arrow-key navigation across the grid (plan §17).
+  // Walking past either end of a bar pages to the neighbouring bar, so the
+  // whole 32-step loop is reachable from the keyboard without leaving the grid.
   function moveFocus(row: number, col: number) {
     const clampedRow = Math.min(rows.length - 1, Math.max(0, row));
-    const clampedCol = Math.min(STEP_COUNT - 1, Math.max(0, col));
+    const outOfBar = col < 0 || col >= STEPS_PER_BAR;
+    const nextBar = visibleBar + (col < 0 ? -1 : 1);
+
+    if (outOfBar && nextBar >= 0 && nextBar < BAR_COUNT) {
+      const wrappedCol = col < 0 ? STEPS_PER_BAR - 1 : 0;
+      focusPos.current = { row: clampedRow, col: wrappedCol };
+      pendingFocus.current = { row: clampedRow, col: wrappedCol };
+      uiStore.setVisibleBar(nextBar);
+      return;
+    }
+
+    const clampedCol = Math.min(STEPS_PER_BAR - 1, Math.max(0, col));
     focusPos.current = { row: clampedRow, col: clampedCol };
-    const cell = gridRef.current?.querySelector<HTMLButtonElement>(
-      `[data-row="${clampedRow}"][data-col="${clampedCol}"]`
-    );
-    cell?.focus();
+    focusCell(clampedRow, clampedCol);
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -163,7 +204,7 @@ export function NoteGrid({ trackId }: { trackId: TrackId }) {
         break;
       case "End":
         event.preventDefault();
-        moveFocus(row, STEP_COUNT - 1);
+        moveFocus(row, STEPS_PER_BAR - 1);
         break;
       default:
         break;
@@ -175,6 +216,7 @@ export function NoteGrid({ trackId }: { trackId: TrackId }) {
       <div className={styles.noteGridHeader}>
         <span className={styles.noteGridEyebrow}>{eyebrow}</span>
         <span className={styles.noteGridNote}>{note}</span>
+        <BarSelector />
       </div>
       <div className={styles.noteGridBody}>
         <div className={styles.rowLabels} aria-hidden="true">
@@ -186,63 +228,71 @@ export function NoteGrid({ trackId }: { trackId: TrackId }) {
           ))}
         </div>
         <div className={styles.gridColumns}>
+          {/* Beats are numbered 1–4 within the bar on screen, matching how the
+              bar is counted out loud, not 1–8 across the loop. */}
           <div className={styles.gridRuler} aria-hidden="true">
-            {Array.from({ length: STEP_COUNT }, (_, step) => {
-              const isBeat = step % 4 === 0;
+            {Array.from({ length: STEPS_PER_BAR }, (_, stepInBar) => {
+              const isBeat = stepInBar % 4 === 0;
               const isActiveBeat =
-                playheadStep !== null && Math.floor(playheadStep / 4) === step / 4 && isBeat;
+                localPlayhead !== null && isBeat && Math.floor(localPlayhead / 4) === stepInBar / 4;
               return (
                 <span
-                  key={step}
+                  key={stepInBar}
                   className={`${styles.gridTick} ${isBeat ? styles.gridTickBeat : ""} ${
                     isActiveBeat ? styles.gridTickActive : ""
                   }`}
                 >
-                  {isBeat ? step / 4 + 1 : "·"}
+                  {isBeat ? stepInBar / 4 + 1 : "·"}
                 </span>
               );
             })}
           </div>
           <div
             role="grid"
-            aria-label={`${trackId} pattern, 16 steps`}
+            aria-label={`${trackId} pattern, bar ${visibleBar + 1} of ${BAR_COUNT}, ${STEPS_PER_BAR} steps`}
             className={styles.gridRows}
             ref={gridRef}
             onKeyDown={onKeyDown}
           >
             {rows.map((row, rowIndex) => (
               <div key={row.key} role="row" className={styles.gridRow}>
-                {row.cells.map((cell, step) => {
-                  const isPlayhead = playheadStep === step;
-                  const stateClass =
-                    cell.state === "on"
-                      ? styles.stepCellOn
-                      : cell.state === "accent"
-                        ? styles.stepCellAccent
-                        : cell.state === "note"
-                          ? styles.stepCellNote
-                          : cell.state === "held"
-                            ? styles.stepCellHeld
-                            : "";
-                  const isTabStop =
-                    focusPos.current.row === rowIndex && focusPos.current.col === step;
-                  return (
-                    <button
-                      key={step}
-                      type="button"
-                      role="gridcell"
-                      data-row={rowIndex}
-                      data-col={step}
-                      tabIndex={isTabStop ? 0 : -1}
-                      className={`${styles.stepCell} ${stateClass} ${isPlayhead ? styles.stepCellPlayhead : ""}`}
-                      aria-label={`${row.label}, step ${step + 1}, ${cell.stateLabel}`}
-                      onClick={cell.onToggle}
-                      onFocus={() => {
-                        focusPos.current = { row: rowIndex, col: step };
-                      }}
-                    />
-                  );
-                })}
+                {/* Cells are built for all 32 steps; only the visible bar's
+                    slice renders, and each cell keeps its absolute step. */}
+                {row.cells
+                  .slice(absoluteStep(visibleBar, 0), absoluteStep(visibleBar, 0) + STEPS_PER_BAR)
+                  .map((cell, step) => {
+                    const isPlayhead = localPlayhead === step;
+                    const stateClass =
+                      cell.state === "on"
+                        ? styles.stepCellOn
+                        : cell.state === "accent"
+                          ? styles.stepCellAccent
+                          : cell.state === "note"
+                            ? styles.stepCellNote
+                            : cell.state === "held"
+                              ? styles.stepCellHeld
+                              : "";
+                    const isTabStop =
+                      focusPos.current.row === rowIndex && focusPos.current.col === step;
+                    return (
+                      <button
+                        key={step}
+                        type="button"
+                        role="gridcell"
+                        data-row={rowIndex}
+                        data-col={step}
+                        tabIndex={isTabStop ? 0 : -1}
+                        className={`${styles.stepCell} ${stateClass} ${isPlayhead ? styles.stepCellPlayhead : ""}`}
+                        // Naming the bar keeps the step unambiguous for screen
+                        // readers, since step 1 exists in both bars.
+                        aria-label={`${row.label}, bar ${visibleBar + 1}, step ${step + 1}, ${cell.stateLabel}`}
+                        onClick={cell.onToggle}
+                        onFocus={() => {
+                          focusPos.current = { row: rowIndex, col: step };
+                        }}
+                      />
+                    );
+                  })}
               </div>
             ))}
           </div>

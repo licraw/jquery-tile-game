@@ -119,7 +119,7 @@ function buildTools(): ModelContextTool[] {
     {
       name: "get_project_state",
       description:
-        "Read the full Synth Lab project: tempo, master level, transport status, all four tracks (patterns, patches, formatted parameter values), selection and lesson progress.",
+        "Read the full Synth Lab project: tempo, master level, transport status, all four tracks (patterns, patches, formatted parameter values), selection and lesson progress. Patterns are 32 steps — two bars of sixteenth notes, where steps 0-15 are bar 1 and steps 16-31 are bar 2.",
       inputSchema: { type: "object", properties: {} },
       annotations: { readOnlyHint: true },
       execute: async () => {
@@ -165,7 +165,7 @@ function buildTools(): ModelContextTool[] {
     {
       name: "set_pattern",
       description:
-        "Set drum steps. steps is a list of {lane: kick|snare|hat|perc, step: 0-15, value: off|on|accent}. Applied as one undoable change.",
+        "Set drum steps. steps is a list of {lane: kick|snare|hat|perc, step: 0-31, value: off|on|accent}. The loop is two bars of sixteenths: steps 0-15 are bar 1 and steps 16-31 are bar 2. Applied as one undoable change.",
       inputSchema: {
         type: "object",
         properties: {
@@ -205,7 +205,7 @@ function buildTools(): ModelContextTool[] {
     {
       name: "set_notes",
       description:
-        "Set bass or lead notes. notes is a list of {step: 0-15, row: 0-7 or null to clear}. Rows are C-minor scale degrees from the root. One note per step is enforced.",
+        "Set bass or lead notes. notes is a list of {step: 0-31, row: 0-7 or null to clear}. The loop is two bars of sixteenths: steps 0-15 are bar 1 and steps 16-31 are bar 2. Rows are C-minor scale degrees from the root. One note per step is enforced.",
       inputSchema: {
         type: "object",
         properties: {
@@ -249,7 +249,7 @@ function buildTools(): ModelContextTool[] {
     {
       name: "set_chords",
       description:
-        "Set pad chords. chords is a list of {step: 0-15, chord: Cm|Ab|Eb|Fm or null to clear}. A chord holds until the next chord start.",
+        "Set pad chords. chords is a list of {step: 0-31, chord: Cm|Ab|Eb|Fm or null to clear}. The loop is two bars of sixteenths: steps 0-15 are bar 1 and steps 16-31 are bar 2. A chord holds until the next chord start, including across the bar boundary.",
       inputSchema: {
         type: "object",
         properties: {

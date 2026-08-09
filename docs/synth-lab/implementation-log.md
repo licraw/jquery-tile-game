@@ -1,7 +1,7 @@
 # Synth Lab — Implementation Log
 
-**Status:** MVP implemented and validated
-**Date:** 2026-08-08
+**Status:** MVP implemented and validated; two-bar iteration shipped (§9)
+**Date:** 2026-08-08, updated 2026-08-09
 **Sources of truth:** `synth-lab-product-brief.md`, `docs/synth-lab/implementation-plan.md`,
 Figma `Soft Arcade Synth Lab`, Figma `Soft Arcade Design System V1`
 
@@ -310,3 +310,146 @@ The two items that would prevent calling the MVP fully signed off are in §7:
 the ADSR graph (strongly-preferred, not required, scope) and the absence of
 real-device iOS plus by-ear audio validation (verification, not
 implementation).
+
+---
+
+## 9. Iteration — two-bar patterns, 96 BPM starter jam (2026-08-09)
+
+A musical-usability pass on the shipped MVP. Scope was deliberately narrow: the
+loop got longer and the starter jam got better. No new tracks, no arrangement,
+no pattern chaining, no new synthesis features, no new lessons. The audio
+engine, command layer, history, persistence architecture, lessons and WebMCP
+architecture were preserved — only the places that hard-coded "one bar of 16"
+changed.
+
+### 9.1 Data model
+
+`STEP_COUNT` is now `STEPS_PER_BAR (16) * BAR_COUNT (2)` = **32**. Patterns stay
+a single flat array per track, indexed by **absolute** step 0–31; bar N owns
+`[N*16, (N+1)*16)`. `barOfStep`, `stepWithinBar` and `absoluteStep` in
+`state/types.ts` are the only place that arithmetic lives.
+
+Nothing below the UI layer knows about a "visible bar". Commands validate
+`0 ≤ step < 32`, the engine sequences 32 events, `chordAtStep` scans the whole
+loop (so a chord started in bar 1 correctly holds across the boundary), and
+`derive.ts` summarises all 32. `Project.schemaVersion` is `2`.
+
+### 9.2 Sequencing and transport
+
+`transport.loopEnd` is `"2m"`; each of the five `Tone.Sequence`s holds 32 `"16n"`
+events, so sequence length and loop length stay phase-locked — that is what
+keeps the four tracks synchronized across the bar boundary. The playhead store
+publishes the absolute step; `usePlayheadBar()` derives the sounding bar so the
+BAR selector re-renders twice a loop instead of 32 times.
+
+The transport's `BAR n` readout now means *position inside the loop* (1 or 2),
+not a count of completed loop iterations — the old local loop-counter refs are
+gone. Loop progress is measured across 32 steps and carries a divider at the
+bar seam.
+
+### 9.3 BAR 1 / BAR 2
+
+The grid shows 16 steps at a time, like a hardware groovebox. The selector lives
+in the Note Grid header, built from the existing segmented-control vocabulary
+and tinted with the selected track's tone.
+
+Three rules, all verified in the running app:
+
+- **Viewing and playing are independent.** Selecting a bar never touches the
+  transport; the transport never changes the selection. The playing bar is
+  indicated by a pip on its BAR button instead.
+- **All four tracks page together.** `uiStore.visibleBar` is one
+  workspace-level value — view state, never persisted into the project, never
+  in history.
+- **The playhead exists only in the visible bar.** Viewing bar 2 while bar 1
+  plays draws no playhead rather than a stale or wrapped one.
+
+**No auto-follow was implemented.** The brief allowed it as optional; adding a
+preference to a surface that already has a coach rail and an agent layer costs
+more than it returns, and the pip already answers "where is it?" without moving
+anything under the user. Arrow-key navigation off either end of a bar pages to
+the neighbouring bar, so the whole 32-step loop stays keyboard-reachable.
+
+### 9.4 Starter jam and tempo
+
+Default tempo is **96 BPM** (was 112) — in `createDefaultProject`, and therefore
+in reset, lesson starting states and fixtures, since all of them derive from it.
+
+Bar 2 is not a copy. The harmonic rhythm halves (Cm Ab Eb Fm | Ab — Eb —), the
+bass follows that new harmony and ends on Bb leaning back into the C, the lead
+answers with a sparser phrase that enters half a beat late, and the drums drop
+the beat-4 kick to open room for a three-16th snare fill into the loop point.
+Vocabulary stays beginner-simple; the goal was only that the loop survives the
+many repeats a synthesis lesson takes.
+
+### 9.5 Persistence migration
+
+**The storage key deliberately did not change.** Bumping it would orphan every
+saved jam under a dead key. `migrateProject()` upgrades v1 payloads in place by
+**repeating bar 1 into bar 2** — a 16-step loop played twice is the same audio
+the user last heard, so a returning jam sounds exactly as they left it. Padding
+with rests would have silently gutted half of it.
+
+The envelope's `schemaVersion` is informational; the migration reads the
+project's own version, so a mismatched envelope never discards a readable jam.
+Arrays of any other length are treated as corruption rather than a schema:
+content is kept and padded to 32 rather than dropping the project.
+
+Verified end-to-end against a **real v1 payload** left in the browser profile by
+an earlier session (16-step arrays, `schemaVersion: 1`, tempo 69): it loaded as
+32-step patterns with tempo preserved, and re-saved at v2.
+
+### 9.6 Lane strip — a regression found and fixed
+
+Widening the strip from 16 to 32 cells made it need 358px where it used to need
+269px, so between ~641px and ~1050px the tail of bar 2 was **silently clipped**
+by the strip's `overflow: hidden` — pattern the user had written, invisible with
+no indication. Fixed by making the cells flex (`flex: 1 1 0`, capped at 8px)
+rather than fixed-width, and by hiding the strip at the existing 900px collapse
+instead of 640px, below which the lane cannot spare enough room to represent 32
+steps honestly. Measured: all 32 cells visible with no clipping at every width
+where the strip is shown.
+
+### 9.7 Validation
+
+`npm test` — 86 passing across 7 files (was 45 across 5). New coverage: 32-step
+patterns, the 15→16 and 31→0 seams, all four tracks on one step index, editing
+and undoing bar 2 independently of bar 1, persistence round-trip, v1→v2
+migration (including the corrupt-length path), WebMCP tools across all 32 steps,
+validators counting bar-2 edits, and default tempo 96. `npx tsc --noEmit` and
+`npm run build` clean.
+
+In the running app: migration from real v1 data, two-bar playback with the
+playing-bar pip, editing both bars during playback without the view moving,
+persistence round-trip at v2, reset → 96 BPM two-bar jam, a real 500px viewport
+with no horizontal overflow, and the strip/selector responsive rules confirmed
+live.
+
+**Not verified:** actual audible output (the harness has no audio capture, and
+`requestAnimationFrame` is throttled in the automated window, so real-time
+playhead animation could not be observed either); tempo change during playback
+(the automation lost input routing before that step — the path is unchanged and
+`loopEnd "2m"` is a musical duration that rescales both bars identically, but it
+was not exercised live); and **iOS Safari, which was not tested on a real
+device** — no device was available, and browser emulation is not evidence of
+iOS audio behaviour. The §7 gap for real-device iOS validation therefore still
+stands.
+
+### 9.8 Figma
+
+`Soft Arcade Synth Lab` updated so it still describes the product: Track Lane
+strips rebuilt as 32 cells with a bar-boundary gap and repainted to the new
+starter jam; the BAR 1 / BAR 2 selector added to all four Note Grid variants
+(documenting selection and the playing pip in one static state); Transport at
+96 BPM with two-bar loop copy, a divider at the bar seam and a truthful progress
+width; stale `4 sounds · 16 steps` instance overrides fixed across 07 and 08;
+new two-bar behaviour contracts on 11 — Handoff; the Note Grid illustrative note
+and the G1 review note corrected. Existing SoftArcade design language preserved
+throughout — no unrelated explorations touched.
+
+### 9.9 Pre-existing issue, untouched
+
+The Next dev overlay reports one hydration warning from `ParameterSlider`
+(`--sl-fill` float serialisation differing between server and client). It
+reproduces on the pre-change baseline and is unrelated to this work, so it was
+left alone.

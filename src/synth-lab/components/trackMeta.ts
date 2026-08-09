@@ -8,7 +8,7 @@ export const TRACK_META: Record<
 > = {
   drums: {
     name: "Drums",
-    meta: "4 sounds  ·  16 steps",
+    meta: "4 sounds  ·  2 bars",
     tone: "var(--sl-tone-drums)",
     voiceChip: "SAMPLES  ·  PATTERN ONLY"
   },

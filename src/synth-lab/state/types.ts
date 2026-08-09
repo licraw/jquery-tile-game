@@ -2,7 +2,36 @@ export type TrackId = "drums" | "bass" | "pads" | "lead";
 export type DrumLaneId = "kick" | "snare" | "hat" | "perc";
 export type DrumStep = "off" | "on" | "accent";
 export type Waveform = "sine" | "triangle" | "sawtooth" | "square";
-export const STEP_COUNT = 16;
+
+/**
+ * The loop is two bars of sixteenth notes. Patterns are stored as one flat
+ * array of STEP_COUNT absolute steps — bar N owns steps [N*STEPS_PER_BAR,
+ * (N+1)*STEPS_PER_BAR). The UI pages 16 steps at a time (groovebox model);
+ * nothing below the UI layer knows about the visible bar.
+ */
+export const STEPS_PER_BAR = 16;
+export const BAR_COUNT = 2;
+export const STEP_COUNT = STEPS_PER_BAR * BAR_COUNT;
+
+/** 0-based bar index, 0 = "BAR 1" in product copy. */
+export type BarIndex = number;
+
+export const BAR_INDICES: BarIndex[] = Array.from({ length: BAR_COUNT }, (_, bar) => bar);
+
+/** Absolute step index → the bar that owns it. */
+export function barOfStep(step: number): BarIndex {
+  return Math.floor(step / STEPS_PER_BAR);
+}
+
+/** Absolute step index → its position within its own bar (0–15). */
+export function stepWithinBar(step: number): number {
+  return step % STEPS_PER_BAR;
+}
+
+/** Bar index + position within that bar → absolute step index. */
+export function absoluteStep(bar: BarIndex, stepInBar: number): number {
+  return bar * STEPS_PER_BAR + stepInBar;
+}
 
 // C minor, one octave — the only scale in MVP (Figma decision G1).
 // Row index 0 = lowest row. Bass rows C1..C2, Lead rows C3..C4.
@@ -62,8 +91,9 @@ export interface Track<P> {
 }
 
 export interface Project {
-  schemaVersion: 1;
-  tempoBpm: number; // 60–180, default 112
+  /** 1 = one-bar/16-step patterns (migrated on load); 2 = two-bar/32-step. */
+  schemaVersion: 2;
+  tempoBpm: number; // 60–180, default 96
   masterLevel: number; // 0–1
   tracks: {
     drums: Track<DrumPattern>;
@@ -143,7 +173,11 @@ export function noteRowLabels(trackId: "bass" | "lead"): string[] {
   return SCALE_DEGREES.map((_, row) => rowToNoteName(row, trackId, 0));
 }
 
-/** Derived pad "held" ranges: a chord sounds from its start step until the next start. */
+/**
+ * Derived pad "held" ranges: a chord sounds from its start step until the next
+ * start. Scans the whole 32-step loop, so a chord started in bar 1 correctly
+ * holds across the bar boundary into bar 2.
+ */
 export function chordAtStep(steps: (ChordId | null)[], step: number): { chord: ChordId; startStep: number } | null {
   for (let i = step; i >= 0; i -= 1) {
     const chord = steps[i];
@@ -151,7 +185,7 @@ export function chordAtStep(steps: (ChordId | null)[], step: number): { chord: C
       return { chord, startStep: i };
     }
   }
-  // Loop wrap: the last chord of the bar holds across the loop start.
+  // Loop wrap: the last chord of the loop holds across the loop start.
   for (let i = steps.length - 1; i > step; i -= 1) {
     const chord = steps[i];
     if (chord) {

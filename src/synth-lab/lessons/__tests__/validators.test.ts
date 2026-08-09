@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultProject } from "@/synth-lab/state/defaultProject";
-import type { Project } from "@/synth-lab/state/types";
+import { STEPS_PER_BAR, STEP_COUNT, type Project } from "@/synth-lab/state/types";
 import { getChallenge } from "../challenges";
 
 function withBassPatch(project: Project, patch: Partial<NonNullable<Project["tracks"]["bass"]["patch"]>>): Project {
@@ -83,6 +83,40 @@ describe("challenge validators (forgiving bands)", () => {
 
     const pad = getChallenge("challenge-5")!;
     expect(pad.prepare!(start)).toEqual([{ type: "setVoices", trackId: "pads", voices: 1 }]);
+  });
+
+  it("challenge-0 counts edits made in bar 2, not just bar 1", () => {
+    const c = getChallenge("challenge-0")!;
+    const bar2Only = structuredClone(start);
+    bar2Only.tracks.drums.pattern.lanes.perc[STEPS_PER_BAR + 1] = "on";
+    expect(c.validate(bar2Only, start)).toBe(false);
+    bar2Only.tracks.drums.pattern.lanes.kick[STEP_COUNT - 2] = "accent";
+    expect(c.validate(bar2Only, start)).toBe(true);
+  });
+
+  it("challenge-0 counts one edit per bar as two edits", () => {
+    const c = getChallenge("challenge-0")!;
+    const split = structuredClone(start);
+    split.tracks.drums.pattern.lanes.perc[1] = "on";
+    split.tracks.drums.pattern.lanes.perc[STEPS_PER_BAR + 1] = "on";
+    expect(c.validate(split, start)).toBe(true);
+  });
+
+  it("challenge-5 accepts a chord that only exists in bar 2", () => {
+    const c = getChallenge("challenge-5")!;
+    const mono = structuredClone(start);
+    mono.tracks.pads.patch!.voices = 1;
+    const bar2Chord = structuredClone(mono);
+    bar2Chord.tracks.pads.patch!.voices = 4;
+    bar2Chord.tracks.pads.pattern.steps = bar2Chord.tracks.pads.pattern.steps.map((_, step) =>
+      step === STEPS_PER_BAR + 4 ? "Cm" : null
+    );
+    expect(c.validate(bar2Chord, mono)).toBe(true);
+  });
+
+  it("validators see the full 32-step patterns", () => {
+    expect(start.tracks.drums.pattern.lanes.kick).toHaveLength(STEP_COUNT);
+    expect(start.tracks.pads.pattern.steps).toHaveLength(STEP_COUNT);
   });
 
   it("recipe steps validate in sequence", () => {
