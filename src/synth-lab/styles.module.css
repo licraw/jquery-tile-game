@@ -16,7 +16,7 @@
   --sl-tone-lead: var(--accent-green);
 
   position: relative;
-  width: min(1376px, calc(100% - 64px));
+  width: min(var(--max-width-wide), calc(100% - 64px));
   margin: 0 auto;
   padding-bottom: 32px;
 }
