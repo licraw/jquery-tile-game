@@ -122,7 +122,7 @@ a {
 }
 
 .home-hero {
-  width: min(var(--max-width), calc(100% - 32px));
+  width: min(var(--max-width-wide), calc(100% - 64px));
   min-height: 460px;
   margin: 0 auto;
   display: grid;
@@ -395,7 +395,7 @@ a {
 .content-section,
 .game-page,
 .text-page {
-  width: min(var(--max-width), calc(100% - 32px));
+  width: min(var(--max-width-wide), calc(100% - 64px));
   margin: 0 auto;
   padding: 48px 0;
 }
@@ -457,7 +457,13 @@ a {
   gap: 16px;
 }
 
-.labs-page,
+.labs-page {
+  display: grid;
+  gap: 36px;
+  width: min(var(--max-width-wide), calc(100% - 64px));
+  min-width: 0;
+}
+
 .lab-article-page {
   display: grid;
   gap: 36px;
@@ -1530,7 +1536,11 @@ a {
 }
 
 @media (max-width: 640px) {
-  .site-header {
+  .site-header,
+  .home-hero,
+  .content-section,
+  .game-page,
+  .text-page {
     width: calc(100% - 32px);
   }
 
@@ -1673,7 +1683,12 @@ a {
     height: min(680px, 92svh);
   }
 
-  .labs-page,
+  .labs-page {
+    width: calc(100% - 32px);
+    gap: 28px;
+    padding-top: 34px;
+  }
+
   .lab-article-page {
     width: min(100% - 24px, 1200px);
     gap: 28px;
