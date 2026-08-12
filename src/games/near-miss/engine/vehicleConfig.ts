@@ -19,6 +19,9 @@ export type NearMissVehicleConfig = {
   occupancyLengthScale: number;
   nearMissGrowX: number;
   nearMissGrowY: number;
+  crashMass: number;
+  crashSpinResistance: number;
+  crashSlideResistance: number;
   collisionZones: NearMissVehicleCollisionZone[];
   spawnWeight: number;
 };
@@ -38,6 +41,9 @@ export const NEAR_MISS_VEHICLE_CONFIGS = [
     occupancyLengthScale: 1,
     nearMissGrowX: 18,
     nearMissGrowY: 11,
+    crashMass: 0.7,
+    crashSpinResistance: 1,
+    crashSlideResistance: 1,
     collisionZones: [
       { id: "center-body", x: 0, y: 0.03, width: 0.48, height: 0.6 },
       { id: "front-taper", x: 0, y: -0.31, width: 0.38, height: 0.27 },
@@ -56,6 +62,9 @@ export const NEAR_MISS_VEHICLE_CONFIGS = [
     occupancyLengthScale: 1,
     nearMissGrowX: 13,
     nearMissGrowY: 11,
+    crashMass: 1,
+    crashSpinResistance: 1,
+    crashSlideResistance: 1,
     collisionZones: [
       { id: "center-cabin", x: 0, y: 0.04, width: 0.56, height: 0.54 },
       { id: "front-taper", x: 0, y: -0.3, width: 0.44, height: 0.25 },
@@ -74,6 +83,9 @@ export const NEAR_MISS_VEHICLE_CONFIGS = [
     occupancyLengthScale: 1,
     nearMissGrowX: 13,
     nearMissGrowY: 11,
+    crashMass: 1,
+    crashSpinResistance: 1,
+    crashSlideResistance: 1,
     collisionZones: [
       { id: "center-cabin", x: 0, y: 0.04, width: 0.56, height: 0.54 },
       { id: "front-taper", x: 0, y: -0.3, width: 0.44, height: 0.25 },
@@ -92,6 +104,9 @@ export const NEAR_MISS_VEHICLE_CONFIGS = [
     occupancyLengthScale: 1.28,
     nearMissGrowX: 16,
     nearMissGrowY: 13,
+    crashMass: 1.75,
+    crashSpinResistance: 2.55,
+    crashSlideResistance: 1.18,
     collisionZones: [
       { id: "cargo-box", x: 0, y: 0.18, width: 0.68, height: 0.58 },
       { id: "cab", x: 0, y: -0.28, width: 0.56, height: 0.31 },
